@@ -17,6 +17,7 @@ import com.yahoo.labs.samoa.instances.Instance;
 
 import moa.cluster.Clustering;
 import moa.clusterers.AbstractClusterer;
+import moa.clusterers.macro.dbscan.DBScan;
 import moa.core.Measurement;
 
 /** Citation: Y. Chen and L. Tu, “Density-Based Clustering for Real-Time Stream Data,” in
@@ -44,33 +45,94 @@ public class Dstream extends AbstractClusterer {
 			+ "window of protection for renaming previously deleted grids as"
 			+ "sporadic, > 0", 1.0, 0.001, Double.MAX_VALUE);
 
-	private int currTime;				// the current time in the data stream. Starts at 0.
+	/**
+	 * The data stream's current internal time. Starts at 0.
+	 */
+	private int currTime; 
 	
-	private int gap;					// User defined parameter: Time gap between calls to the offline component
-	private double decayFactor;			// User defined parameter, represented as lambda in Chen and Tu 2007
-	private double cm;					// User defined parameter: Controls the threshold for dense grids
-	private double cl;					// User defined parameter: Controls the threshold for sparse grids
-	private double beta;				// User defined parameter: Adjusts the window of protection for renaming
-										// previously deleted grids as being sporadic
+	/**
+	 * User defined parameter: Time gap between calls to the offline component
+	 */
+	private int gap;
 	
-	private double dm;					// Density threshold for dense grids; controlled by cm; given in eq 8 of Chen and Tu 2007
-	private double dl;					// Density threshold for sparse grids; controlled by cl; given in eq 9 of Chen and Tu 2007
+	/**
+	 * User defined parameter, represented as lambda in Chen and Tu 2007
+	 */
+	private double decayFactor;
 	
-	private int d;						// The number of dimensions in the data stream; defined in section 3.1 of Chen and Tu 2007
-	private int N;						// The number of density grids; defined after eq 2 in Chen and Tu 2007
+	/**
+	 * User defined parameter: Controls the threshold for dense grids
+	 */
+	private double cm;
 	
-	private boolean initialized;		// True if initialization of D-Stream is complete, false otherwise
+	/**
+	 * User defined parameter: Controls the threshold for sparse grids
+	 */
+	private double cl;
 	
-	private HashMap<int[],CharacteristicVector> grid_list;	// A list of all density grids which are being monitored; given in
-															// figure 1 of Chen and Tu 2007
-	private ArrayList<GridCluster> grid_clusters;			// A list of all Grid Clusters, which are defined in Definition 3.6
-															// of Chen and Tu 2007
+	/**
+	 * User defined parameter: Adjusts the window of protection for renaming 
+	 * previously deleted grids as being sporadic
+	 */
+	private double beta;
 	
-	private int[]minVals;				// the minimum value seen for a numerical dimension; used to calculate N
-	private int[]maxVals;				// the maximum value seen for a numerical dimension; used to calculate N
+	/**
+	 * Density threshold for dense grids; controlled by cm; given in eq 8 of Chen and Tu 2007
+	 * 
+	 * @see cm
+	 */
+	private double dm;
+	
+	/**
+	 * Density threshold for sparse grids; controlled by cl; given in eq 9 of Chen and Tu 2007
+	 * 
+	 * @see cl
+	 */
+	private double dl;
+	
+	/**
+	 * The number of dimensions in the data stream; defined in section 3.1 of Chen and Tu 2007
+	 */
+	private int d;
+	
+	/**
+	 * The number of density grids; defined after eq 2 in Chen and Tu 2007
+	 */
+	private int N;
+	
+	/**
+	 * True if initialization of D-Stream is complete, false otherwise
+	 */
+	private boolean initialized;
+	
+	/**
+	 * A list of all density grids which are being monitored;
+	 * given in figure 1 of Chen and Tu 2007
+	 */
+	private HashMap<int[],CharacteristicVector> grid_list;
+	
+	/**
+	 * A list of all Grid Clusters, which are defined in 
+	 * Definition 3.6 of Chen and Tu 2007
+	 */
+	private ArrayList<GridCluster> grid_clusters;
+	
+	/**
+	 * The minimum value seen for a numerical dimension; used to calculate N
+	 * 
+	 * @see N
+	 */
+	private int[]minVals;
+	
+	/**
+	 * The maximum value seen for a numerical dimension; used to calculate N
+	 * 
+	 * @see N
+	 */
+	private int[]maxVals;
 
-
-	/* @see moa.clusterers.Clusterer#isRandomizable()
+	/**
+	 *  @see moa.clusterers.Clusterer#isRandomizable()
 	 * D-Stream is not randomizable.
 	 */
 	@Override
@@ -78,7 +140,8 @@ public class Dstream extends AbstractClusterer {
 		return false;
 	}
 
-	/* @see moa.clusterers.Clusterer#getVotesForInstance(com.yahoo.labs.samoa.instances.Instance)
+	/**
+	 * @see moa.clusterers.Clusterer#getVotesForInstance(com.yahoo.labs.samoa.instances.Instance)
 	 * D-Stream does not vote on instances.
 	 */
 	@Override
@@ -86,15 +149,20 @@ public class Dstream extends AbstractClusterer {
 		return null;
 	}
 
-	/* @see moa.clusterers.Clusterer#getClusteringResult()
+	/**
+	 *  @see moa.clusterers.Clusterer#getClusteringResult()
 	 */
 	@Override
 	public Clustering getClusteringResult() {
-		// TODO Write getClusteringResult method
-		return null;
+		Clustering c = new Clustering();
+		for(GridCluster gc : grid_clusters)
+		{
+			c.add(gc);
+		}
+		return c;
 	}
 
-	/* (non-Javadoc)
+	/**
 	 * @see moa.clusterers.AbstractClusterer#resetLearningImpl()
 	 */
 	@Override
@@ -120,15 +188,35 @@ public class Dstream extends AbstractClusterer {
 
 	}
 
-	/* (non-Javadoc)
+	/**
 	 * @see moa.clusterers.AbstractClusterer#trainOnInstanceImpl(com.yahoo.labs.samoa.instances.Instance)
 	 * 
 	 * trainOnInstanceImpl implements the procedure given in Figure 1 of Chen and Tu 2007
 	 */
 	@Override
 	public void trainOnInstanceImpl(Instance inst) {
-		int[]g;							// the density grid to which 'inst' belongs
-		CharacteristicVector cvOfG;		// the CharacteristicVector for density grid g
+		
+		/**
+		 * Coordinates of the density grid to which 'inst' belongs
+		 * 
+		 * @see inst
+		 */
+		int[]g;
+		
+		/**
+		 * The characteristic vector associated to g.
+		 * 
+		 * @see g
+		 */
+		CharacteristicVector cvOfG;
+		
+		/**
+		 * Flag denoting whether or not N needs to be recalculated because a new maxvalue or minvalue has been seen
+		 * 
+		 * @see N
+		 * @see maxVals
+		 * @see minVals
+		 */
 		boolean recalculateN = false;	// flag indicating whether N needs to be recalculated after this instance
 
 		// 1. Read record x = (x1,x2,...,xd)
@@ -228,7 +316,7 @@ public class Dstream extends AbstractClusterer {
 
 	}
 
-	/* (non-Javadoc)
+	/**
 	 * @see moa.clusterers.AbstractClusterer#getModelMeasurementsImpl()
 	 */
 	@Override
@@ -236,7 +324,7 @@ public class Dstream extends AbstractClusterer {
 		throw new UnsupportedOperationException("Not supported yet.");
 	}
 
-	/* (non-Javadoc)
+	/**
 	 * @see moa.clusterers.AbstractClusterer#getModelDescription(java.lang.StringBuilder, int)
 	 */
 	@Override
@@ -244,8 +332,8 @@ public class Dstream extends AbstractClusterer {
 		throw new UnsupportedOperationException("Not supported yet.");
 	}
 
-	/*
-	 * initialCustering implements the procedure given in Figure 3 of Chen and Tu 2007
+	/**
+	 * Implements the procedure given in Figure 3 of Chen and Tu 2007
 	 */
 	private void initialClustering() {
 		// 1. Update the density of all grids in grid_list
@@ -316,7 +404,7 @@ public class Dstream extends AbstractClusterer {
 								// If gprime is in cluster c', merge c and c' into the larger of the two
 								if (class2 != -1)
 								{							
-									if (this.grid_clusters.get(class1).getSize() < this.grid_clusters.get(class2).getSize())
+									if (this.grid_clusters.get(class1).getWeight() < this.grid_clusters.get(class2).getWeight())
 										mergeClusters(class1, class2);
 									else
 										mergeClusters(class2, class1);
@@ -345,7 +433,7 @@ public class Dstream extends AbstractClusterer {
 								// If gprime is in cluster c', merge c and c' into the larger of the two
 								if (class2 != -1)
 								{							
-									if (this.grid_clusters.get(class1).getSize() < this.grid_clusters.get(class2).getSize())
+									if (this.grid_clusters.get(class1).getWeight() < this.grid_clusters.get(class2).getWeight())
 										mergeClusters(class1, class2);
 									else
 										mergeClusters(class2, class1);
@@ -369,8 +457,8 @@ public class Dstream extends AbstractClusterer {
 		}while(changesMade);	// while changes are being made
 	}
 
-	/*
-	 * adjustClustering implements the procedure given in Figure 4 of Chen and Tu 2007
+	/**
+	 * Implements the procedure given in Figure 4 of Chen and Tu 2007
 	 */
 	private void adjustClustering() {
 		// 1. Update the density of all grids in grid_list
@@ -385,8 +473,8 @@ public class Dstream extends AbstractClusterer {
 
 	}
 
-	/*
-	 * removeSporadic implements the procedure described in section 4.2 of Chen and Tu 2007
+	/**
+	 * Implements the procedure described in section 4.2 of Chen and Tu 2007
 	 */
 	private void removeSporadic() {
 		// 1. For each grid g in grid_list
@@ -431,7 +519,11 @@ public class Dstream extends AbstractClusterer {
 		
 	}
 
-	// Determine whether a sparse density grid is sporadic using rules S1 and S2 of Chen and Tu 2007
+	/**
+	 * Determines whether a sparse density grid is sporadic using rules S1 and S2 of Chen and Tu 2007
+	 * 
+	 * @param cv - the CharacteristicVector of the density grid being assessed for sporadicity
+	 */
 	public boolean checkIfSporadic(CharacteristicVector cv)
 	{
 		// Check S1
@@ -447,9 +539,13 @@ public class Dstream extends AbstractClusterer {
 		return false; 
 	}
 	
-	/*
-	 * densityThresholdFunction implements the function pi given in Definition 4.1 of
-	 * Chen and Tu 2007
+	/**
+	 * Implements the function pi given in Definition 4.1 of Chen and Tu 2007
+	 * 
+	 * @param tg - the update time in the density grid's characteristic vector
+	 * @param cl - user defined parameter which controls the threshold for sparse grids
+	 * @param decayFactor - user defined parameter which is represented as lambda in Chen and Tu 2007
+	 * @param N - the number of density grids, defined after eq 2 in Chen and Tu 2007
 	 */
 	public double densityThresholdFunction(int tg, double cl, double decayFactor, int N)
 	{
@@ -459,14 +555,18 @@ public class Dstream extends AbstractClusterer {
 	}
 	
 	
-	/*
-	 * isNeighbour determines whether two grids are neighbours based on their coordinates
+	/**
+	 * Determines whether two grids are neighbours based on their coordinates.
+	 * 
 	 * Neighbouring Grids are defined in Definition 3.3 of Chen and Tu 2007 as:
 	 * Consider two density grids g1 =(j1 1,j1 2, ··· ,j1 d)and 
 	 * g2 =(j2 1,j2 2, ·· · ,j2 d), if there exists k,1 ≤ k ≤ d, such that:
 	 * 1) j1 i = j2 i ,i =1, ·· · ,k −1,k +1, ··· ,d; and
 	 * 2) |j1 k −j2 k| =1,
 	 * then g1 and g2 are neighboring grids in the kth dimension, denoted as g1 ∼ g2. 
+	 * 
+	 * @param g1 - int[] representing the grid coordinates of density grid g1
+	 * @param g2 - int[] representing the grid coordinates of density grid g2
 	 */
 	public boolean isNeighbour (int[] g1, int[] g2)
 	{
@@ -486,11 +586,14 @@ public class Dstream extends AbstractClusterer {
 			return false;
 	}
 
-	/*
-	 * assignGridtoCluster looks through grid_list to find the neighbours of the density grid g1.
+	/**
+	 * Looks through grid_list to find the neighbours of the density grid g1.
 	 * g1 is assigned to the cluster of any neighbouring grid which is itself assigned to a cluster.
 	 * If multiple neighbouring grids are assigned to clusters, g1 is assigned to the one with the
 	 * lowest index and merges the density grids from the high index cluster into the low index cluster.
+	 * 
+	 * @param g1 - int[] representing the grid coordinates of density grid g1
+	 * @param cv1 - CharacteristicVector of density grid g1
 	 */
 	public int assignGridToCluster(int[] g1, CharacteristicVector cv1)
 	{
@@ -514,12 +617,12 @@ public class Dstream extends AbstractClusterer {
 				}
 				else if (class2 != -1 )
 				{
-					if(this.grid_clusters.get(class1).getSize() > this.grid_clusters.get(class2).getSize())
+					if(this.grid_clusters.get(class1).getWeight() > this.grid_clusters.get(class2).getWeight())
 					{
 						class1 = class2; //TODO make sure this logic survives mergeClusters
 						mergeClusters(class1, class2);
 					}
-					else if(this.grid_clusters.get(class1).getSize() < this.grid_clusters.get(class2).getSize())
+					else if(this.grid_clusters.get(class1).getWeight() < this.grid_clusters.get(class2).getWeight())
 					{
 						mergeClusters(class2, class1);
 					}
@@ -538,9 +641,12 @@ public class Dstream extends AbstractClusterer {
 		return class1;
 	}
 
-	/*
+	/**
 	 * Reassign all grids belonging in the small cluster to the big cluster
 	 * Merge the GridCluster objects representing each cluster
+	 * 
+	 * @param smallClus - the index of the smaller cluster
+	 * @param bigClus - the index of the bigger cluster
 	 */
 	public void mergeClusters (int smallClus, int bigClus)
 	{		
@@ -579,8 +685,8 @@ public class Dstream extends AbstractClusterer {
 		}
 	}
 
-	/*
-	 * Iterates through grid_list and updates the density for each density grid therein.
+	/**
+	 * Iterates through grid_list and updates the density for each density grid therein
 	 */
 	public void updateGridListDensity()
 	{
@@ -595,31 +701,49 @@ public class Dstream extends AbstractClusterer {
 		}
 	}
 
+	/**
+	 * @return currTime - the stream's internal time
+	 */
 	public int getCurrTime()
 	{
 		return this.currTime;
 	}
 
+	/**
+	 * @param t - sets the stream's internal time to 't'
+	 */
 	public void setCurrTime(int t)
 	{
 		this.currTime = t;
 	}
 
+	/**
+	 * Increments the stream's internal time
+	 */
 	public void incCurrTime()
 	{
 		this.currTime++;
 	}
 
+	/**
+	 * @return decay factor - represented as lambda in Chen and Tu 2007
+	 */
 	public double getDecayFactor()
 	{
 		return this.decayFactor;
 	}
 
+	/**
+	 * @return dm - the density threshold for dense grids. It is controlled by cl and given in eq 8 of Chen and Tu 2007
+	 */
 	public double getDM()
 	{
 		return this.dm;
 	}
 
+	/**
+	 * @return dl - the density threshold for sparse grids. It is controlled by cl and given in eq 9 of Chen and Tu 2007
+	 */
 	public double getDL()
 	{
 		return this.dl;

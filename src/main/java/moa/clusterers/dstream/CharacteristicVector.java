@@ -1,11 +1,6 @@
 package moa.clusterers.dstream;
 
-/** Citation: Y. Chen and L. Tu, “Density-Based Clustering for Real-Time Stream Data,” in
- *  Proceedings of the 13th ACM SIGKDD international conference on Knowledge discovery and
- *  data mining, 2007, pp. 133–142.
- */
-
-/*
+/**
  * The Characteristic Vector of a density grid is defined in 
  * Definition 3.2 of Chen and Tu 2007 as:
  * The characteristic vector of a grid g is a tuple (tg,tm,D, label,status), 
@@ -13,6 +8,10 @@ package moa.clusterers.dstream;
  * is removed from grid list as a sporadic grid (if ever), D is the grid 
  * density at the last update, label is the class label of the grid, and 
  * status = {SPORADIC, NORMAL} is a label used for removing sporadic grids.
+ * 
+ * Citation: Y. Chen and L. Tu, “Density-Based Clustering for Real-Time Stream Data,” in
+ * Proceedings of the 13th ACM SIGKDD international conference on Knowledge discovery and
+ * data mining, 2007, pp. 133–142.
  */
 public class CharacteristicVector {
 	

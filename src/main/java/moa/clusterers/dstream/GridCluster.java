@@ -1,21 +1,24 @@
 package moa.clusterers.dstream;
 
-import moa.AbstractMOAObject;
+import moa.cluster.Cluster;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Random;
 
-/** Citation: Y. Chen and L. Tu, “Density-Based Clustering for Real-Time Stream Data,” in
- *  Proceedings of the 13th ACM SIGKDD international conference on Knowledge discovery and
- *  data mining, 2007, pp. 133–142.
- */
+import com.yahoo.labs.samoa.instances.Instance;
 
-/*
+/**
  * Grid Clusters are defined in Definition 3.6 of Chen and Tu 2007 as:
  * Let G =(g1, ·· · ,gm) be a grid group, if every inside grid of G is 
  * a dense grid and every outside grid is either a dense grid or a 
  * transitional grid, then G is a grid cluster.
+ * 
+ * Citation: Y. Chen and L. Tu, “Density-Based Clustering for Real-Time Stream Data,” in
+ * Proceedings of the 13th ACM SIGKDD international conference on Knowledge discovery and
+ * data mining, 2007, pp. 133–142.
  */
-public class GridCluster extends AbstractMOAObject
+public class GridCluster extends Cluster
 {
 	private HashMap<int[], Boolean> grids;
 	private int clusterLabel;
@@ -26,6 +29,21 @@ public class GridCluster extends AbstractMOAObject
 		this.clusterLabel = label;
 	}
 	
+	public GridCluster(HashMap<int[],Boolean> hashMap, int label)
+	{
+		this.grids = new HashMap<int[],Boolean>();
+		
+		for (Map.Entry<int[], Boolean> grid : hashMap.entrySet())
+		{
+			int[] g = grid.getKey();
+			Boolean inside = grid.getValue();
+			
+			this.grids.put(g,  inside);
+		}
+		
+		this.clusterLabel = label;
+		
+	}
 	
 	/*
 	 * Add density grid, g, to the cluster
@@ -68,11 +86,6 @@ public class GridCluster extends AbstractMOAObject
 		
 	}
 	
-	public void splitCluster()
-	{
-		//TODO implement this function
-	}
-	
 	/*
 	 * Returns TRUE if the argument density grid, g, is an inside grid of the cluster
 	 * Inside Grids are defined in Definition 3.5 of Chen and Tu 2007 as:
@@ -107,13 +120,6 @@ public class GridCluster extends AbstractMOAObject
 		
 		return inside;
 	}
-	
-	/**
-	 * @return the size
-	 */
-	public int getSize() {
-		return grids.size();
-	}
 
 	/**
 	 * @return the clusterLabel
@@ -137,6 +143,35 @@ public class GridCluster extends AbstractMOAObject
 	@Override
 	public void getDescription(StringBuilder sb, int indent) {
 		sb.append("Cluster of grids.");
+	}
+
+
+	@Override
+	public double[] getCenter() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	/**
+	 * @return the number of density grids in the cluster
+	 */
+	@Override
+	public double getWeight() {
+		return this.grids.size();
+	}
+
+
+	@Override
+	public double getInclusionProbability(Instance instance) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+
+	@Override
+	public Instance sample(Random random) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 	
 }
