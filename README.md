@@ -2,11 +2,12 @@
 Implementation of the D-Stream clustering algorithm for use in MOA.
 
 TODO:
-- [ ] Complete 'adjustClustering' method in DStream;
+- [x] Complete 'adjustClustering' method in DStream;
 - [x] Write 'getClusteringResult' method in DStream;
 - [ ] Add functionality to check whether it is faster, when assigning a grid to a cluster, if it is faster to iterate through grid_list or through that grid's neighbours;
-- [ ] Ensure that 'assignGridtoCluster' accounts for all boundary conditions; and
-- [x] Generate Javadoc.
+- [ ] Ensure that 'assignGridtoCluster' accounts for all boundary conditions;
+- [x] Generate Javadoc; and
+- [ ] Add functionality to test clusters for connectedness/split clusters if necessary.
 
 The D-Stream algorithm is described by Yixin Chen and Li Tu in their paper "Density-Based Clustering for Real-Time Stream Data" [2]. Please cite that paper if you use this code.
 

@@ -28,6 +28,9 @@ public class Dstream extends AbstractClusterer {
 
 	private static final long serialVersionUID = 8759754409276716725L;
 	private static final int NO_CLASS = -1;
+	private static final int SPARSE = 0;
+	private static final int TRANSITIONAL = 1;
+	private static final int DENSE = 2;
 
 	public IntOption timeGapOption = new IntOption("timeGap", 'g',
 			"Time gap between calls to the offline component", 100);
@@ -284,7 +287,7 @@ public class Dstream extends AbstractClusterer {
 
 		if(!this.grid_list.containsKey(g))
 		{
-			cvOfG = new CharacteristicVector(this.getCurrTime(), -1, 0, -1, false);
+			cvOfG = new CharacteristicVector(this.getCurrTime(), -1, 0, -1, false, this.getDL(), this.getDM());
 			this.grid_list.put(g, cvOfG);
 		}
 
@@ -348,7 +351,7 @@ public class Dstream extends AbstractClusterer {
 			int[] g = grid.getKey();
 			CharacteristicVector cvOfG = grid.getValue();
 
-			if(cvOfG.isDense(this.getDM()))
+			if(cvOfG.getAttribute() == DENSE)
 			{
 				int gridClass = assignGridToCluster(g, cvOfG);
 				cvOfG.setGridClass(gridClass);
@@ -469,7 +472,188 @@ public class Dstream extends AbstractClusterer {
 		//    a. If g is sparse
 		//    b. If g is dense
 		//    c. If g is transitional
-		
+		for (Map.Entry<int[], CharacteristicVector> grid : grid_list.entrySet())
+		{
+			int[] g = grid.getKey();
+			CharacteristicVector cv = grid.getValue();
+			int gClass = cv.getGridClass();
+			
+			if(cv.isAttChanged())
+			{
+				if (cv.getAttribute() == SPARSE)
+				{
+					this.grid_clusters.get(cv.getGridClass()).removeGrid(g);
+					cv.setGridClass(NO_CLASS);
+				}
+				else if (cv.getAttribute() == DENSE)
+				{
+					// Among all neighbours of g, find the grid h whose cluster ch has the largest size
+					GridCluster ch;				// The cluster, ch, of h
+					int[] hChosen = g.clone();	// The chosen grid h, whose cluster ch has the largest size
+					double hChosenSize = -1.0;	// The size of ch, the largest cluster
+					int[] h;					// The neighbour of g being considered
+					int hClass = -1;			// The class label of h
+					int hChosenClass = -1;		// The class label of ch
+					
+					for (int i = 0 ; i < this.d ; i++)
+					{
+						h = g.clone();
+						h[i] = g[i] - 1;
+						
+						if (this.grid_list.containsKey(h))
+						{
+							hClass = this.grid_list.get(h).getGridClass();
+							ch = this.grid_clusters.get(hClass);
+						
+							if (ch.getWeight() > hChosenSize)
+							{
+								hChosenSize = ch.getWeight();
+								hChosenClass = hClass;
+								hChosen = h.clone();
+								
+							}
+						}
+						
+						h[i] = g[i] + 1;
+						
+						if (this.grid_list.containsKey(h))
+						{
+							hClass = this.grid_list.get(h).getGridClass();
+							ch = this.grid_clusters.get(hClass);
+						
+							if (ch.getWeight() > hChosenSize)
+							{
+								hChosenSize = ch.getWeight();
+								hChosenClass = hClass;
+								hChosen = h.clone();
+							}
+						}
+					}
+					
+					if (!hChosen.equals(g))
+					{
+						ch = this.grid_clusters.get(hChosenClass);
+						
+						// If h is a dense grid
+						if (this.grid_list.get(hChosen).getAttribute() == DENSE)
+						{
+							// If g is labelled as NO_CLASS
+							if(gClass == NO_CLASS)
+							{
+								cv.setGridClass(hChosenClass);
+								ch.addGrid(g);
+								
+							}
+							// Else is g belongs to cluster c
+							else
+							{
+								GridCluster c = this.grid_clusters.get(gClass);
+								double gSize = c.getWeight();
+								
+								if (gSize <= hChosenSize)
+									ch.absorbCluster(c);
+								else
+									c.absorbCluster(ch);
+							}
+						}
+					
+						// Else if h is a transitional grid
+						else if (this.grid_list.get(hChosen).getAttribute() == TRANSITIONAL)
+						{
+							// If g is labelled as no class and if h is an outside grid if g is added to ch
+							if (gClass == NO_CLASS && !ch.isInside(hChosen, g))
+							{
+								cv.setGridClass(hChosenClass);
+								ch.addGrid(g);
+							}
+							// Else if g is in cluster c and |c| >= |ch|
+							else
+							{
+								GridCluster c = this.grid_clusters.get(gClass);
+								double gSize = c.getWeight();
+								
+								if (gSize >= hChosenSize)
+								{
+									// Move h from cluster ch to cluster c
+									ch.removeGrid(hChosen);
+									c.addGrid(hChosen);
+									CharacteristicVector cvhChosen = this.grid_list.get(hChosen);
+									cvhChosen.setGridClass(gClass);
+									this.grid_list.put(hChosen, cvhChosen);
+								}
+							}
+						}
+					}
+					
+				}
+				// Else g is a transitional grid
+				else
+				{
+					// Among all neighbours of g, find the grid h whose cluster ch has the largest size
+					// and satisfies that g would be an outside grid if added to it
+					GridCluster ch;				// The cluster, ch, of h
+					int[] hChosen = g.clone();	// The chosen grid h, whose cluster ch has the largest size
+					double hChosenSize = -1.0;	// The size of ch, the largest cluster
+					int[] h;					// The neighbour of g being considered
+					int hClass = -1;			// The class label of h
+					int hChosenClass = -1;		// The class label of ch
+										
+					for (int i = 0 ; i < this.d ; i++)
+					{
+						h = g.clone();
+						h[i] = g[i] - 1;
+						
+						if (this.grid_list.containsKey(h))
+						{
+							hClass = this.grid_list.get(h).getGridClass();
+							ch = this.grid_clusters.get(hClass);
+						
+							if ((ch.getWeight() > hChosenSize) && ch.isInside(g, g))
+							{
+								hChosenSize = ch.getWeight();
+								hChosenClass = hClass;
+								hChosen = h.clone();
+								
+							}
+						}
+						
+						h[i] = g[i] + 1;
+						
+						if (this.grid_list.containsKey(h))
+						{
+							hClass = this.grid_list.get(h).getGridClass();
+							ch = this.grid_clusters.get(hClass);
+						
+							if ((ch.getWeight() > hChosenSize) && ch.isInside(g, g))
+							{
+								hChosenSize = ch.getWeight();
+								hChosenClass = hClass;
+								hChosen = h.clone();
+							}
+						}
+					}
+					
+					if (!hChosen.equals(g))
+					{
+						ch = this.grid_clusters.get(hChosenClass);
+						ch.addGrid(g);
+						if(gClass != -1)
+							this.grid_clusters.get(gClass).removeGrid(g);
+						
+						cv.setGridClass(hChosenClass);
+					}
+					else
+					{
+						int newClass = this.grid_clusters.size()+1;
+						GridCluster c = new GridCluster(newClass);
+						c.addGrid(g);
+						this.grid_clusters.add(c);
+					}
+				}
+				
+				this.grid_list.put(g, cv);
+			}
+		}
 
 	}
 

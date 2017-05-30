@@ -45,8 +45,8 @@ public class GridCluster extends Cluster
 		
 	}
 	
-	/*
-	 * Add density grid, g, to the cluster
+	/**
+	 * @param g the density grid to add to the cluster
 	 */
 	public void addGrid(int[] g)
 	{
@@ -54,16 +54,16 @@ public class GridCluster extends Cluster
 		this.grids.put(g, inside);
 	}
 	
-	/*
-	 * Remove density grid, g, from the cluster
+	/**
+	 * @param g the density grid to remove from the cluster
 	 */
 	public void removeGrid(int[] g)
 	{
 		this.grids.remove(g);
 	}
 	
-	/*
-	 * Absorb the argument cluster into this cluster
+	/**
+	 * @param gridClus the GridCluster to be absorbed into this cluster
 	 */
 	public void absorbCluster(GridCluster gridClus)
 	{
@@ -86,12 +86,14 @@ public class GridCluster extends Cluster
 		
 	}
 	
-	/*
-	 * Returns TRUE if the argument density grid, g, is an inside grid of the cluster
+	/**
 	 * Inside Grids are defined in Definition 3.5 of Chen and Tu 2007 as:
 	 * Consider a grid group G and a grid g ∈ G, suppose g =(j1, ··· ,jd), if g has 
 	 * neighboring grids in every dimension i =1, ·· · ,d, then g is an inside grid 
 	 * in G.Otherwise g is an outside grid in G.
+	 * 
+	 * @param g the density grid being labelled inside or out
+	 * @return TRUE if g is an inside grid, FALSE otherwise
 	 */
 	public Boolean isInside(int[] g)
 	{
@@ -120,9 +122,47 @@ public class GridCluster extends Cluster
 		
 		return inside;
 	}
+	
+	/**
+	 * Inside Grids are defined in Definition 3.5 of Chen and Tu 2007 as:
+	 * Consider a grid group G and a grid g ∈ G, suppose g =(j1, ··· ,jd), if g has 
+	 * neighboring grids in every dimension i =1, ·· · ,d, then g is an inside grid 
+	 * in G.Otherwise g is an outside grid in G.
+	 * 
+	 * @param g the density grid being labelled as inside or outside
+	 * @param h the density grid being proposed for addition
+	 * @return TRUE if g would be an inside grid, FALSE otherwise
+	 */
+	public Boolean isInside(int[] g, int[] h)
+	{
+		int d = g.length;
+		Boolean inside = true;
+		
+		for (int i = 0 ; i < d ; i++)
+		{
+			int[] gprime = g.clone();
+			gprime[i] = g[i] - 1;
+			
+			if(!this.grids.containsKey(gprime) && !gprime.equals(h))
+			{
+				inside = false;
+				break;
+			}
+			
+			gprime[i] = g[i] + 1;
+			
+			if(!this.grids.containsKey(gprime) && !gprime.equals(h))
+			{
+				inside = false;
+				break;
+			}
+		}
+		
+		return inside;
+	}
 
 	/**
-	 * @return the clusterLabel
+	 * @return the class label assigned to the cluster
 	 */
 	public int getClusterLabel() {
 		return clusterLabel;
@@ -134,7 +174,7 @@ public class GridCluster extends Cluster
 	}
 	
 	/**
-	 * @param clusterLabel the clusterLabel to set
+	 * @param clusterLabel the class label to assign to the cluster
 	 */
 	public void setClusterLabel(int clusterLabel) {
 		this.clusterLabel = clusterLabel;
