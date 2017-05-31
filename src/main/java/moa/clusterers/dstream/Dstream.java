@@ -17,7 +17,6 @@ import com.yahoo.labs.samoa.instances.Instance;
 
 import moa.cluster.Clustering;
 import moa.clusterers.AbstractClusterer;
-import moa.clusterers.macro.dbscan.DBScan;
 import moa.core.Measurement;
 
 /** Citation: Y. Chen and L. Tu, “Density-Based Clustering for Real-Time Stream Data,” in
@@ -771,10 +770,11 @@ public class Dstream extends AbstractClusterer {
 	}
 
 	/**
-	 * Looks through grid_list to find the neighbours of the density grid g1.
-	 * g1 is assigned to the cluster of any neighbouring grid which is itself assigned to a cluster.
+	 * Assigns g1 to the cluster of any neighbouring grid which is itself assigned to a cluster.
 	 * If multiple neighbouring grids are assigned to clusters, g1 is assigned to the one with the
 	 * lowest index and merges the density grids from the high index cluster into the low index cluster.
+	 * 
+	 * Searches through grid_list or g1's neighbourhood, which ever is faster.
 	 * 
 	 * @param g1 - int[] representing the grid coordinates of density grid g1
 	 * @param cv1 - CharacteristicVector of density grid g1
@@ -782,36 +782,106 @@ public class Dstream extends AbstractClusterer {
 	public int assignGridToCluster(int[] g1, CharacteristicVector cv1)
 	{
 		int class1 = cv1.getGridClass();	// The argument density grid's class
+		int [] g2;
 
 		// Iterate through the density grids in grid_list to find g1's neighbouring grids
-		// TODO check whether it is faster to iterate through grid_list or the full set of g1's neighbours
-		for (Map.Entry<int[], CharacteristicVector> grid : grid_list.entrySet())
+		if (this.grid_list.size() < 2*this.d)
 		{
-			int[] g2 = grid.getKey();
-			CharacteristicVector cv2 = grid.getValue();
-			int class2 = cv2.getGridClass();				// The current density grid's class
-
-			// If g1 and g2 are neighbouring density grids, update clusters as required
-			if (isNeighbour(g1, g2))
+			for (Map.Entry<int[], CharacteristicVector> grid : this.grid_list.entrySet())
 			{
-				if (class1 == -1)
+				g2 = grid.getKey();
+				CharacteristicVector cv2 = grid.getValue();
+				int class2 = cv2.getGridClass();				// The current density grid's class
+
+				// If g1 and g2 are neighbouring density grids, update clusters as required
+				if (isNeighbour(g1, g2))
 				{
-					cv1.setGridClass(class2);
-					class1 = class2;
-				}
-				else if (class2 != -1 )
+					if (class2 != -1)
+					{
+						if (class1 == -1)
+						{
+							cv1.setGridClass(class2);
+							this.grid_clusters.get(class2).addGrid(g1);
+							class1 = class2;
+						}
+						else
+						{
+							if(this.grid_clusters.get(class1).getWeight() > this.grid_clusters.get(class2).getWeight())
+							{
+								class1 = class2; //TODO make sure this logic survives mergeClusters
+								mergeClusters(class1, class2);
+							}
+							else if(this.grid_clusters.get(class1).getWeight() < this.grid_clusters.get(class2).getWeight())
+							{
+								mergeClusters(class2, class1);
+							}
+						}
+					}
+				}			
+			}
+		}
+		// Iterate through g1's neighbourhood
+		else
+		{
+			for (int i = 0 ; i < this.d ; i++)
+			{
+				g2 = g1.clone();
+				g2[i] = g1[i] - 1;
+
+				// If g2 is in grid_list...
+				if(this.grid_list.containsKey(g2))
 				{
-					if(this.grid_clusters.get(class1).getWeight() > this.grid_clusters.get(class2).getWeight())
+					CharacteristicVector cv2 = this.grid_list.get(g2);
+					int class2 = cv2.getGridClass();				// The current density grid's class
+					
+					if (class1 == -1)
 					{
-						class1 = class2; //TODO make sure this logic survives mergeClusters
-						mergeClusters(class1, class2);
+						cv1.setGridClass(class2);
+						this.grid_clusters.get(class2).addGrid(g1);
+						class1 = class2;
 					}
-					else if(this.grid_clusters.get(class1).getWeight() < this.grid_clusters.get(class2).getWeight())
+					else
 					{
-						mergeClusters(class2, class1);
+						if(this.grid_clusters.get(class1).getWeight() > this.grid_clusters.get(class2).getWeight())
+						{
+							class1 = class2; //TODO make sure this logic survives mergeClusters
+							mergeClusters(class1, class2);
+						}
+						else if(this.grid_clusters.get(class1).getWeight() < this.grid_clusters.get(class2).getWeight())
+						{
+							mergeClusters(class2, class1);
+						}
 					}
 				}
-			}			
+
+				g2[i] = g1[i] + 1;
+
+				// If g2 is in grid_list...
+				if(this.grid_list.containsKey(g2))
+				{
+					CharacteristicVector cv2 = this.grid_list.get(g2);
+					int class2 = cv2.getGridClass();				// The current density grid's class
+					
+					if (class1 == -1)
+					{
+						cv1.setGridClass(class2);
+						this.grid_clusters.get(class2).addGrid(g1);
+						class1 = class2;
+					}
+					else
+					{
+						if(this.grid_clusters.get(class1).getWeight() > this.grid_clusters.get(class2).getWeight())
+						{
+							class1 = class2; //TODO make sure this logic survives mergeClusters
+							mergeClusters(class1, class2);
+						}
+						else if(this.grid_clusters.get(class1).getWeight() < this.grid_clusters.get(class2).getWeight())
+						{
+							mergeClusters(class2, class1);
+						}
+					}
+				}
+			}
 		}
 
 		// If g1 had no neighbouring density grids, or had no neighbouring density grids which were
