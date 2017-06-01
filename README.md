@@ -1,5 +1,5 @@
 # D-Stream
-Implementation of the D-Stream clustering algorithm for use in MOA.
+Implementation of the D-Stream clustering algorithm for use in MOA. Tested for compatability with MOA 16.04.
 
 TODO:
 - [x] Complete 'adjustClustering' method in DStream;

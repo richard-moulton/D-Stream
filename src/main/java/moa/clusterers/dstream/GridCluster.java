@@ -20,25 +20,25 @@ import com.yahoo.labs.samoa.instances.Instance;
  */
 public class GridCluster extends Cluster
 {
-	private HashMap<int[], Boolean> grids;
+	private HashMap<DensityGrid, Boolean> grids;
 	private int clusterLabel;
 	
 	public GridCluster(int label)
 	{
-		this.grids = new HashMap<int[],Boolean>();
+		this.grids = new HashMap<DensityGrid,Boolean>();
 		this.clusterLabel = label;
 	}
 	
-	public GridCluster(HashMap<int[],Boolean> hashMap, int label)
+	public GridCluster(HashMap<DensityGrid,Boolean> hashMap, int label)
 	{
-		this.grids = new HashMap<int[],Boolean>();
+		this.grids = new HashMap<DensityGrid,Boolean>();
 		
-		for (Map.Entry<int[], Boolean> grid : hashMap.entrySet())
+		for (Map.Entry<DensityGrid, Boolean> grid : hashMap.entrySet())
 		{
-			int[] g = grid.getKey();
+			DensityGrid dg = grid.getKey();
 			Boolean inside = grid.getValue();
 			
-			this.grids.put(g,  inside);
+			this.grids.put(dg,  inside);
 		}
 		
 		this.clusterLabel = label;
@@ -46,20 +46,20 @@ public class GridCluster extends Cluster
 	}
 	
 	/**
-	 * @param g the density grid to add to the cluster
+	 * @param dg the density grid to add to the cluster
 	 */
-	public void addGrid(int[] g)
+	public void addGrid(DensityGrid dg)
 	{
-		Boolean inside = isInside(g);
-		this.grids.put(g, inside);
+		Boolean inside = isInside(dg);
+		this.grids.put(dg, inside);
 	}
 	
 	/**
-	 * @param g the density grid to remove from the cluster
+	 * @param dg the density grid to remove from the cluster
 	 */
-	public void removeGrid(int[] g)
+	public void removeGrid(DensityGrid dg)
 	{
-		this.grids.remove(g);
+		this.grids.remove(dg);
 	}
 	
 	/**
@@ -68,20 +68,20 @@ public class GridCluster extends Cluster
 	public void absorbCluster(GridCluster gridClus)
 	{
 		// Add each density grid from gridClus into this.grids
-		for (Map.Entry<int[], Boolean> grid : gridClus.getGrids().entrySet())
+		for (Map.Entry<DensityGrid, Boolean> grid : gridClus.getGrids().entrySet())
 		{
-			int[]g = grid.getKey();
+			DensityGrid dg = grid.getKey();
 			
-			this.grids.put(g, false);
+			this.grids.put(dg, false);
 		}
 		
 		// Determine which density grids in this.grids are 'inside' and which are 'outside'
-		for (Map.Entry<int[], Boolean> grid : gridClus.getGrids().entrySet())
+		for (Map.Entry<DensityGrid, Boolean> grid : gridClus.getGrids().entrySet())
 		{
-			int[]g = grid.getKey();
-			Boolean inside = isInside(g);
+			DensityGrid dg = grid.getKey();
+			Boolean inside = isInside(dg);
 			
-			this.grids.put(g, inside);
+			this.grids.put(dg, inside);
 		}
 		
 	}
@@ -92,28 +92,28 @@ public class GridCluster extends Cluster
 	 * neighboring grids in every dimension i =1, ·· · ,d, then g is an inside grid 
 	 * in G.Otherwise g is an outside grid in G.
 	 * 
-	 * @param g the density grid being labelled inside or out
+	 * @param dg the density grid to label as being inside or out
 	 * @return TRUE if g is an inside grid, FALSE otherwise
 	 */
-	public Boolean isInside(int[] g)
+	public Boolean isInside(DensityGrid dg)
 	{
-		int d = g.length;
+		int d = dg.getDimensions();
 		Boolean inside = true;
 		
 		for (int i = 0 ; i < d ; i++)
 		{
-			int[] gprime = g.clone();
-			gprime[i] = g[i] - 1;
+			DensityGrid dgprime = new DensityGrid(dg);
+			dgprime.vary(i, -1);
 			
-			if(!this.grids.containsKey(gprime))
+			if(!this.grids.containsKey(dgprime))
 			{
 				inside = false;
 				break;
 			}
 			
-			gprime[i] = g[i] + 1;
+			dgprime.vary(i, 2);
 			
-			if(!this.grids.containsKey(gprime))
+			if(!this.grids.containsKey(dgprime))
 			{
 				inside = false;
 				break;
@@ -129,29 +129,28 @@ public class GridCluster extends Cluster
 	 * neighboring grids in every dimension i =1, ·· · ,d, then g is an inside grid 
 	 * in G.Otherwise g is an outside grid in G.
 	 * 
-	 * @param g the density grid being labelled as inside or outside
-	 * @param h the density grid being proposed for addition
+	 * @param dg the density grid being labelled as inside or outside
+	 * @param dgH the density grid being proposed for addition
 	 * @return TRUE if g would be an inside grid, FALSE otherwise
 	 */
-	public Boolean isInside(int[] g, int[] h)
+	public Boolean isInside(DensityGrid dg, DensityGrid dgH)
 	{
-		int d = g.length;
 		Boolean inside = true;
 		
-		for (int i = 0 ; i < d ; i++)
+		for (int i = 0 ; i < dg.getDimensions() ; i++)
 		{
-			int[] gprime = g.clone();
-			gprime[i] = g[i] - 1;
+			DensityGrid dgprime = new DensityGrid(dg);
+			dgprime.vary(i, -1);
 			
-			if(!this.grids.containsKey(gprime) && !gprime.equals(h))
+			if(!this.grids.containsKey(dgprime) && !dgprime.equals(dgH))
 			{
 				inside = false;
 				break;
 			}
 			
-			gprime[i] = g[i] + 1;
+			dgprime.vary(i, 2);
 			
-			if(!this.grids.containsKey(gprime) && !gprime.equals(h))
+			if(!this.grids.containsKey(dgprime) && !dgprime.equals(dgH))
 			{
 				inside = false;
 				break;
@@ -168,7 +167,7 @@ public class GridCluster extends Cluster
 		return clusterLabel;
 	}
 
-	public HashMap<int[],Boolean> getGrids()
+	public HashMap<DensityGrid,Boolean> getGrids()
 	{
 		return this.grids;
 	}

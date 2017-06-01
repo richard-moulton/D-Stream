@@ -111,7 +111,7 @@ public class Dstream extends AbstractClusterer {
 	 * A list of all density grids which are being monitored;
 	 * given in figure 1 of Chen and Tu 2007
 	 */
-	private HashMap<int[],CharacteristicVector> grid_list;
+	private HashMap<DensityGrid,CharacteristicVector> grid_list;
 	
 	/**
 	 * A list of all Grid Clusters, which are defined in 
@@ -169,17 +169,21 @@ public class Dstream extends AbstractClusterer {
 	 */
 	@Override
 	public void resetLearningImpl() {
+		System.out.println("Dstream . resetLearningImpl");
 		this.setCurrTime(0);
-
+		System.out.println("Current time set...");
+		
 		this.gap = timeGapOption.getValue();
 		this.decayFactor = decayFactorOption.getValue();
 		this.cm = cmOption.getValue();
 		this.cl = clOption.getValue();
 		this.beta = betaOption.getValue();
+		System.out.println("Option values set...");
 
 		this.initialized = false;
-		this.grid_list = new HashMap<int[], CharacteristicVector>();
+		this.grid_list = new HashMap<DensityGrid, CharacteristicVector>();
 		this.grid_clusters = new ArrayList<GridCluster>();
+		System.out.println("Data structures initialized...");
 
 		this.dm = -1.0;
 		this.dl = -1.0;
@@ -187,7 +191,8 @@ public class Dstream extends AbstractClusterer {
 		this.N = -1;
 		this.minVals = null;
 		this.maxVals = null;
-
+		System.out.println("Dependent values initialized...\n");
+		printDStreamState();
 	}
 
 	/**
@@ -198,51 +203,45 @@ public class Dstream extends AbstractClusterer {
 	@Override
 	public void trainOnInstanceImpl(Instance inst) {
 		
-		/**
-		 * Coordinates of the density grid to which 'inst' belongs
-		 * 
-		 * @see inst
-		 */
+		System.out.println("Dstream . trainOnInstanceImpl");
+		printout(inst);
 		int[]g;
-		
-		/**
-		 * The characteristic vector associated to g.
-		 * 
-		 * @see g
-		 */
-		CharacteristicVector cvOfG;
-		
-		/**
-		 * Flag denoting whether or not N needs to be recalculated because a new maxvalue or minvalue has been seen
-		 * 
-		 * @see N
-		 * @see maxVals
-		 * @see minVals
-		 */
+		DensityGrid dg;
+		CharacteristicVector cv;
 		boolean recalculateN = false;	// flag indicating whether N needs to be recalculated after this instance
 
 		// 1. Read record x = (x1,x2,...,xd)
+		System.out.println("Step 1");
 		// Passed Instance inst
 		if (!this.initialized)
 		{
+			System.out.println("...not initialized");
 			this.d = inst.numAttributes();
+			System.out.println("d = "+this.d);
 			this.minVals = new int[this.d];
 			this.maxVals = new int[this.d];
-
+			System.out.println("...data initialized");
+			
 			for(int i = 0 ; i < this.d ; i++)
 			{
+				System.out.print(i+" ");
 				if (inst.attribute(i).isNumeric())
 				{
 					maxVals[i] = (int) inst.value(i);
 					minVals[i] = (int) inst.value(i);
 				}
 			}
+			System.out.println("\n...arrays initialized");
 			recalculateN = true;
+			this.initialized = true;
+			System.out.println("...boolean values initialized");
 		}		
 
 		// 2. Determine the density grid g that contains x
+		System.out.println("Step 2");
 		g = new int[this.d];
 
+		System.out.print("Density Grid:");
 		for (int i = 0 ; i < this.d ; i++)
 		{
 			if (inst.attribute(i).isNumeric())
@@ -261,59 +260,77 @@ public class Dstream extends AbstractClusterer {
 			}
 			else
 			{
-				String instValue = inst.stringValue(i);
-				g[i] = inst.attribute(i).indexOfValue(instValue);
+				g[i] = (int) inst.value(i);
 			}
 
+			System.out.print(" "+g[i]);
 		}
 
 		if (recalculateN)
 		{
+			System.out.print("\nrecalculateN:");
 			int n = 1;
 			for (int i = 0 ; i < this.d ; i++)
 			{
+				System.out.print(" "+n);
 				if (inst.attribute(i).isNominal())
 					n = n * inst.attribute(i).numValues();
 				else
 					n = n * (1+maxVals[i]-minVals[i]);
 			}
+			System.out.println(" "+n);
 			this.N = n;
 			this.dl = this.cl/(this.N * (1.0 - this.decayFactor));
 			this.dm = this.cm/(this.N * (1.0 - this.decayFactor));
+			System.out.println("dl = " + this.dl + ", dm = " + this.dm);
 		}
 
+		dg = new DensityGrid(g);
+		
 		// 3. If (g not in grid_list) insert g to grid_list
-
-		if(!this.grid_list.containsKey(g))
+		System.out.println("\nStep 3");
+		
+		if(!this.grid_list.containsKey(dg))
 		{
-			cvOfG = new CharacteristicVector(this.getCurrTime(), -1, 0, -1, false, this.getDL(), this.getDM());
-			this.grid_list.put(g, cvOfG);
+			System.out.println("dg wasn't in grid_list!");
+			cv = new CharacteristicVector(this.getCurrTime(), -1, 0, -1, false, this.getDL(), this.getDM());
+			this.grid_list.put(dg, cv);
 		}
-
+		System.out.println("The size of grid_list is now "+grid_list.size());
+		
 		// 4. Update the characteristic vector of g
-		cvOfG = this.grid_list.get(g);
+		System.out.println("Step 4");
+		cv = this.grid_list.get(g);
 
-		cvOfG.updateGridDensity(this.getCurrTime(), this.getDecayFactor());
+		cv.updateGridDensity(this.getCurrTime(), this.getDecayFactor());
 
-		cvOfG.setUpdateTime(this.getCurrTime());
+		cv.setUpdateTime(this.getCurrTime());
+		
+		printDensityGrid(dg);
 
 		// 5. If tc == gap, then initial clustering
 		// and
 		// 6. If tc mod gap == 0, then:
 		//    a. Detect and remove sporadic grids from grid_list
 		//    b. Adjust clustering
+		System.out.println("Current Time is " + this.getCurrTime() + " and gap is " + this.gap);
 		if (this.getCurrTime() % gap == 0 && this.getCurrTime() != 0)
 		{
 			if (this.getCurrTime() == gap)
+			{
+				System.out.println("Step 5 x6x");
 				this.initialClustering();
+			}
 			else
 			{
+				System.out.println("Step x5x 6");
 				this.removeSporadic();
 				this.adjustClustering();
 			}
 		}
 
 		// 7. Increment tc
+		System.out.println("Step 7\n");
 		this.incCurrTime();
 
 	}
@@ -338,6 +355,7 @@ public class Dstream extends AbstractClusterer {
 	 * Implements the procedure given in Figure 3 of Chen and Tu 2007
 	 */
 	private void initialClustering() {
+		System.out.println("INITIAL CLUSTERING CALLED");
 		// 1. Update the density of all grids in grid_list
 
 		updateGridListDensity();
@@ -345,21 +363,21 @@ public class Dstream extends AbstractClusterer {
 		// 2. Assign each dense grid to a distinct cluster
 		// and
 		// 3. Label all other grids as NO_CLASS	
-		for (Map.Entry<int[], CharacteristicVector> grid : grid_list.entrySet())
+		for (Map.Entry<DensityGrid, CharacteristicVector> grid : grid_list.entrySet())
 		{
-			int[] g = grid.getKey();
+			DensityGrid dg = grid.getKey();
 			CharacteristicVector cvOfG = grid.getValue();
 
 			if(cvOfG.getAttribute() == DENSE)
 			{
-				int gridClass = assignGridToCluster(g, cvOfG);
+				int gridClass = assignGridToCluster(dg, cvOfG);
 				cvOfG.setGridClass(gridClass);
-				this.grid_clusters.get(gridClass).addGrid(g);
+				this.grid_clusters.get(gridClass).addGrid(dg);
 			}
 			else
 				cvOfG.setGridClass(NO_CLASS);
 
-			this.grid_list.replace(g, cvOfG);
+			this.grid_list.replace(dg, cvOfG);
 		}
 
 		// 4. Make changes to grid labels by doing:
@@ -383,9 +401,9 @@ public class Dstream extends AbstractClusterer {
 				GridCluster c = gridClusIter.next();
 
 				// b. for each grid, g, of c
-				for (Map.Entry<int[], Boolean> grid : c.getGrids().entrySet())
+				for (Map.Entry<DensityGrid, Boolean> grid : c.getGrids().entrySet())
 				{
-					int[] g = grid.getKey();
+					DensityGrid dg = grid.getKey();
 					Boolean inside = grid.getValue();
 
 					// b. for each OUTSIDE grid, g, of c
@@ -394,16 +412,16 @@ public class Dstream extends AbstractClusterer {
 						// c. for each neighbouring grid, h, of g
 						for (int i = 0 ; i < this.d ; i++)
 						{
-							int[] gprime = g.clone();
-							gprime[i] = g[i] - 1;
+							DensityGrid dgprime = new DensityGrid(dg);
+							dgprime.vary(i, -1);
 
-							// If gprime is in grid_list...
-							if(this.grid_list.containsKey(gprime))
+							// If dgprime is in grid_list...
+							if(this.grid_list.containsKey(dgprime))
 							{
-								int class1 = this.grid_list.get(g).getGridClass();
-								int class2 = this.grid_list.get(gprime).getGridClass();
+								int class1 = this.grid_list.get(dg).getGridClass();
+								int class2 = this.grid_list.get(dgprime).getGridClass();
 
-								// If gprime is in cluster c', merge c and c' into the larger of the two
+								// If dgprime is in cluster c', merge c and c' into the larger of the two
 								if (class2 != -1)
 								{							
 									if (this.grid_clusters.get(class1).getWeight() < this.grid_clusters.get(class2).getWeight())
@@ -414,25 +432,25 @@ public class Dstream extends AbstractClusterer {
 									changesMade = true;
 								}
 								// If h is transitional, assign it to c
-								else if (this.grid_list.get(gprime).isTransitional(dm, dl))
+								else if (this.grid_list.get(dgprime).isTransitional(dm, dl))
 								{
-									CharacteristicVector cv = this.grid_list.get(gprime);
+									CharacteristicVector cv = this.grid_list.get(dgprime);
 									cv.setGridClass(class1);
-									this.grid_clusters.get(class1).addGrid(gprime);
-									this.grid_list.put(g, cv);
+									this.grid_clusters.get(class1).addGrid(dgprime);
+									this.grid_list.put(dg, cv);
 									changesMade = true;
 								}
 							}
 
-							gprime[i] = g[i] + 1;
+							dgprime.vary(i, 2);
 
-							// If gprime is in grid_list...
-							if(this.grid_list.containsKey(gprime))
+							// If dgprime is in grid_list...
+							if(this.grid_list.containsKey(dgprime))
 							{
-								int class1 = this.grid_list.get(g).getGridClass();
-								int class2 = this.grid_list.get(gprime).getGridClass();
+								int class1 = this.grid_list.get(dg).getGridClass();
+								int class2 = this.grid_list.get(dgprime).getGridClass();
 
-								// If gprime is in cluster c', merge c and c' into the larger of the two
+								// If dgprime is in cluster c', merge c and c' into the larger of the two
 								if (class2 != -1)
 								{							
 									if (this.grid_clusters.get(class1).getWeight() < this.grid_clusters.get(class2).getWeight())
@@ -443,12 +461,12 @@ public class Dstream extends AbstractClusterer {
 									changesMade = true;
 								}
 								// If h is transitional, assign it to c
-								else if (this.grid_list.get(gprime).isTransitional(dm, dl))
+								else if (this.grid_list.get(dgprime).isTransitional(dm, dl))
 								{
-									CharacteristicVector cv = this.grid_list.get(gprime);
+									CharacteristicVector cv = this.grid_list.get(dgprime);
 									cv.setGridClass(class1);
-									this.grid_clusters.get(class1).addGrid(gprime);
-									this.grid_list.put(g, cv);
+									this.grid_clusters.get(class1).addGrid(dgprime);
+									this.grid_list.put(dg, cv);
 									changesMade = true;
 								}
 							}
@@ -463,6 +481,7 @@ public class Dstream extends AbstractClusterer {
 	 * Implements the procedure given in Figure 4 of Chen and Tu 2007
 	 */
 	private void adjustClustering() {
+		System.out.println("ADJUST CLUSTERING CALLED");
 		// 1. Update the density of all grids in grid_list
 
 		updateGridListDensity();
@@ -471,9 +490,9 @@ public class Dstream extends AbstractClusterer {
 		//    a. If g is sparse
 		//    b. If g is dense
 		//    c. If g is transitional
-		for (Map.Entry<int[], CharacteristicVector> grid : grid_list.entrySet())
+		for (Map.Entry<DensityGrid, CharacteristicVector> grid : grid_list.entrySet())
 		{
-			int[] g = grid.getKey();
+			DensityGrid dg = grid.getKey();
 			CharacteristicVector cv = grid.getValue();
 			int gClass = cv.getGridClass();
 			
@@ -481,69 +500,70 @@ public class Dstream extends AbstractClusterer {
 			{
 				if (cv.getAttribute() == SPARSE)
 				{
-					this.grid_clusters.get(cv.getGridClass()).removeGrid(g);
+					this.grid_clusters.get(cv.getGridClass()).removeGrid(dg);
 					cv.setGridClass(NO_CLASS);
 				}
 				else if (cv.getAttribute() == DENSE)
 				{
-					// Among all neighbours of g, find the grid h whose cluster ch has the largest size
-					GridCluster ch;				// The cluster, ch, of h
-					int[] hChosen = g.clone();	// The chosen grid h, whose cluster ch has the largest size
-					double hChosenSize = -1.0;	// The size of ch, the largest cluster
-					int[] h;					// The neighbour of g being considered
-					int hClass = -1;			// The class label of h
-					int hChosenClass = -1;		// The class label of ch
+					// Among all neighbours of dg, find the grid h whose cluster ch has the largest size
+					GridCluster ch;								// The cluster, ch, of h
+					DensityGrid hChosen = new DensityGrid(dg);	// The chosen grid h, whose cluster ch has the largest size
+					double hChosenSize = -1.0;					// The size of ch, the largest cluster
+					DensityGrid dgH;							// The neighbour of g being considered
+					int hClass = -1;							// The class label of h
+					int hChosenClass = -1;						// The class label of ch
 					
 					for (int i = 0 ; i < this.d ; i++)
 					{
-						h = g.clone();
-						h[i] = g[i] - 1;
+						dgH = new DensityGrid(dg);
+						dgH.vary(i, -1);
 						
-						if (this.grid_list.containsKey(h))
+						if (this.grid_list.containsKey(dgH))
 						{
-							hClass = this.grid_list.get(h).getGridClass();
+							hClass = this.grid_list.get(dgH).getGridClass();
 							ch = this.grid_clusters.get(hClass);
 						
 							if (ch.getWeight() > hChosenSize)
 							{
 								hChosenSize = ch.getWeight();
 								hChosenClass = hClass;
-								hChosen = h.clone();
+								hChosen = new DensityGrid(dgH);
 								
 							}
 						}
 						
-						h[i] = g[i] + 1;
+						dgH.vary(i, 2);
 						
-						if (this.grid_list.containsKey(h))
+						if (this.grid_list.containsKey(dgH))
 						{
-							hClass = this.grid_list.get(h).getGridClass();
+							hClass = this.grid_list.get(dgH).getGridClass();
 							ch = this.grid_clusters.get(hClass);
 						
 							if (ch.getWeight() > hChosenSize)
 							{
 								hChosenSize = ch.getWeight();
 								hChosenClass = hClass;
-								hChosen = h.clone();
+								hChosen = new DensityGrid(dgH);
+								
 							}
 						}
 					}
 					
-					if (!hChosen.equals(g))
+					if (!hChosen.equals(dg))
 					{
 						ch = this.grid_clusters.get(hChosenClass);
 						
 						// If h is a dense grid
 						if (this.grid_list.get(hChosen).getAttribute() == DENSE)
 						{
-							// If g is labelled as NO_CLASS
+							// If dg is labelled as NO_CLASS
 							if(gClass == NO_CLASS)
 							{
 								cv.setGridClass(hChosenClass);
-								ch.addGrid(g);
+								ch.addGrid(dg);
 								
 							}
-							// Else is g belongs to cluster c
+							// Else if dg belongs to cluster c
 							else
 							{
 								GridCluster c = this.grid_clusters.get(gClass);
@@ -559,11 +579,11 @@ public class Dstream extends AbstractClusterer {
 						// Else if h is a transitional grid
 						else if (this.grid_list.get(hChosen).getAttribute() == TRANSITIONAL)
 						{
-							// If g is labelled as no class and if h is an outside grid if g is added to ch
-							if (gClass == NO_CLASS && !ch.isInside(hChosen, g))
+							// If dg is labelled as no class and if h is an outside grid if dg is added to ch
+							if (gClass == NO_CLASS && !ch.isInside(hChosen, dg))
 							{
 								cv.setGridClass(hChosenClass);
-								ch.addGrid(g);
+								ch.addGrid(dg);
 							}
 							// Else if g is in cluster c and |c| >= |ch|
 							else
@@ -590,54 +610,53 @@ public class Dstream extends AbstractClusterer {
 				{
 					// Among all neighbours of g, find the grid h whose cluster ch has the largest size
 					// and satisfies that g would be an outside grid if added to it
-					GridCluster ch;				// The cluster, ch, of h
-					int[] hChosen = g.clone();	// The chosen grid h, whose cluster ch has the largest size
-					double hChosenSize = -1.0;	// The size of ch, the largest cluster
-					int[] h;					// The neighbour of g being considered
-					int hClass = -1;			// The class label of h
-					int hChosenClass = -1;		// The class label of ch
+					GridCluster ch;								// The cluster, ch, of h
+					DensityGrid hChosen = new DensityGrid(dg);	// The chosen grid h, whose cluster ch has the largest size
+					double hChosenSize = -1.0;					// The size of ch, the largest cluster
+					DensityGrid dgH;							// The neighbour of dg being considered
+					int hClass = -1;							// The class label of h
+					int hChosenClass = -1;						// The class label of ch
 										
 					for (int i = 0 ; i < this.d ; i++)
 					{
-						h = g.clone();
-						h[i] = g[i] - 1;
+						dgH = new DensityGrid(dg);
+						dgH.vary(i, -1);
 						
-						if (this.grid_list.containsKey(h))
+						if (this.grid_list.containsKey(dgH))
 						{
-							hClass = this.grid_list.get(h).getGridClass();
+							hClass = this.grid_list.get(dgH).getGridClass();
 							ch = this.grid_clusters.get(hClass);
 						
-							if ((ch.getWeight() > hChosenSize) && ch.isInside(g, g))
+							if ((ch.getWeight() > hChosenSize) && ch.isInside(dg, dg))
 							{
 								hChosenSize = ch.getWeight();
 								hChosenClass = hClass;
-								hChosen = h.clone();
-								
+								hChosen = new DensityGrid(dgH);
 							}
 						}
 						
-						h[i] = g[i] + 1;
+						dgH.vary(i,2);
 						
-						if (this.grid_list.containsKey(h))
+						if (this.grid_list.containsKey(dgH))
 						{
-							hClass = this.grid_list.get(h).getGridClass();
+							hClass = this.grid_list.get(dgH).getGridClass();
 							ch = this.grid_clusters.get(hClass);
 						
-							if ((ch.getWeight() > hChosenSize) && ch.isInside(g, g))
+							if ((ch.getWeight() > hChosenSize) && ch.isInside(dg, dg))
 							{
 								hChosenSize = ch.getWeight();
 								hChosenClass = hClass;
-								hChosen = h.clone();
+								hChosen = new DensityGrid(dgH);
 							}
 						}
 					}
 					
-					if (!hChosen.equals(g))
+					if (!hChosen.equals(dg))
 					{
 						ch = this.grid_clusters.get(hChosenClass);
-						ch.addGrid(g);
+						ch.addGrid(dg);
 						if(gClass != -1)
-							this.grid_clusters.get(gClass).removeGrid(g);
+							this.grid_clusters.get(gClass).removeGrid(dg);
 						
 						cv.setGridClass(hChosenClass);
 					}
@@ -645,12 +664,12 @@ public class Dstream extends AbstractClusterer {
 					{
 						int newClass = this.grid_clusters.size()+1;
 						GridCluster c = new GridCluster(newClass);
-						c.addGrid(g);
+						c.addGrid(dg);
 						this.grid_clusters.add(c);
 					}
 				}
 				
-				this.grid_list.put(g, cv);
+				this.grid_list.put(dg, cv);
 			}
 		}
 
@@ -660,6 +679,7 @@ public class Dstream extends AbstractClusterer {
 	 * Implements the procedure described in section 4.2 of Chen and Tu 2007
 	 */
 	private void removeSporadic() {
+		System.out.println("REMOVE SPORADIC CALLED");
 		// 1. For each grid g in grid_list
 		//    a. If g is sporadic
 		//       i. If currTime - tg > gap, delete g from grid_list
@@ -669,9 +689,9 @@ public class Dstream extends AbstractClusterer {
 		//       i. If (S1 && S2), mark as sporadic
 		
 		// For each grid g in grid_list
-		for (Map.Entry<int[], CharacteristicVector> grid : grid_list.entrySet())
+		for (Map.Entry<DensityGrid, CharacteristicVector> grid : grid_list.entrySet())
 		{
-			int[] g = grid.getKey();
+			DensityGrid dg = grid.getKey();
 			CharacteristicVector cv = grid.getValue();
 			
 			// If g is sporadic
@@ -680,15 +700,15 @@ public class Dstream extends AbstractClusterer {
 				// If currTime - tg > gap, delete g from grid_list
 				if ((this.getCurrTime() - cv.getUpdateTime()) > gap)
 				{
-					this.grid_clusters.get(cv.getGridClass()).removeGrid(g);
+					this.grid_clusters.get(cv.getGridClass()).removeGrid(dg);
 					cv.setGridClass(NO_CLASS);
-					this.grid_list.put(g, cv);
+					this.grid_list.put(dg, cv);
 				}
 				// Else if (S1 && S2), mark as sporadic - Else mark as normal
 				else
 				{
 					cv.setSporadic(checkIfSporadic(cv));
-					this.grid_list.put(g, cv);
+					this.grid_list.put(dg, cv);
 				}
 				
 			}
@@ -696,7 +716,7 @@ public class Dstream extends AbstractClusterer {
 			else
 			{
 				cv.setSporadic(checkIfSporadic(cv));
-				this.grid_list.put(g, cv);
+				this.grid_list.put(dg, cv);
 			}
 		}
 		
@@ -739,7 +759,7 @@ public class Dstream extends AbstractClusterer {
 	
 	
 	/**
-	 * Determines whether two grids are neighbours based on their coordinates.
+	 * Determines whether two density grids are neighbours based on their coordinates.
 	 * 
 	 * Neighbouring Grids are defined in Definition 3.3 of Chen and Tu 2007 as:
 	 * Consider two density grids g1 =(j1 1,j1 2, ··· ,j1 d)and 
@@ -748,16 +768,18 @@ public class Dstream extends AbstractClusterer {
 	 * 2) |j1 k −j2 k| =1,
 	 * then g1 and g2 are neighboring grids in the kth dimension, denoted as g1 ∼ g2. 
 	 * 
-	 * @param g1 - int[] representing the grid coordinates of density grid g1
-	 * @param g2 - int[] representing the grid coordinates of density grid g2
+	 * @param dg1 first density grid
+	 * @param dg2 second density grid
 	 */
-	public boolean isNeighbour (int[] g1, int[] g2)
+	public boolean isNeighbour (DensityGrid dg1, DensityGrid dg2)
 	{
 		int differences = 0;
-
+		int[] dg1Coord = dg1.getCoordinates();
+		int[] dg2Coord = dg2.getCoordinates();
+		
 		for(int i = 0 ; i < this.d ; i++)
 		{
-			differences = Math.abs(g1[i]-g2[i]);
+			differences = Math.abs(dg1Coord[i]-dg2Coord[i]);
 
 			if (differences > 1)
 				return false;
@@ -770,38 +792,38 @@ public class Dstream extends AbstractClusterer {
 	}
 
 	/**
-	 * Assigns g1 to the cluster of any neighbouring grid which is itself assigned to a cluster.
-	 * If multiple neighbouring grids are assigned to clusters, g1 is assigned to the one with the
+	 * Assigns dg1 to the cluster of any neighbouring grid which is itself assigned to a cluster.
+	 * If multiple neighbouring grids are assigned to clusters, dg1 is assigned to the one with the
 	 * lowest index and merges the density grids from the high index cluster into the low index cluster.
 	 * 
-	 * Searches through grid_list or g1's neighbourhood, which ever is faster.
+	 * Searches through grid_list or dg1's neighbourhood, which ever is faster.
 	 * 
-	 * @param g1 - int[] representing the grid coordinates of density grid g1
-	 * @param cv1 - CharacteristicVector of density grid g1
+	 * @param dg1 the density grid being assigned to a cluster
+	 * @param cv1 - CharacteristicVector of density grid dg1
 	 */
-	public int assignGridToCluster(int[] g1, CharacteristicVector cv1)
+	public int assignGridToCluster(DensityGrid dg1, CharacteristicVector cv1)
 	{
 		int class1 = cv1.getGridClass();	// The argument density grid's class
-		int [] g2;
+		DensityGrid dg2;
 
-		// Iterate through the density grids in grid_list to find g1's neighbouring grids
+		// Iterate through the density grids in grid_list to find dg1's neighbouring grids
 		if (this.grid_list.size() < 2*this.d)
 		{
-			for (Map.Entry<int[], CharacteristicVector> grid : this.grid_list.entrySet())
+			for (Map.Entry<DensityGrid, CharacteristicVector> grid : this.grid_list.entrySet())
 			{
-				g2 = grid.getKey();
+				dg2 = grid.getKey();
 				CharacteristicVector cv2 = grid.getValue();
 				int class2 = cv2.getGridClass();				// The current density grid's class
 
 				// If g1 and g2 are neighbouring density grids, update clusters as required
-				if (isNeighbour(g1, g2))
+				if (isNeighbour(dg1, dg2))
 				{
 					if (class2 != -1)
 					{
 						if (class1 == -1)
 						{
 							cv1.setGridClass(class2);
-							this.grid_clusters.get(class2).addGrid(g1);
+							this.grid_clusters.get(class2).addGrid(dg1);
 							class1 = class2;
 						}
 						else
@@ -820,24 +842,24 @@ public class Dstream extends AbstractClusterer {
 				}			
 			}
 		}
-		// Iterate through g1's neighbourhood
+		// Iterate through dg1's neighbourhood
 		else
 		{
 			for (int i = 0 ; i < this.d ; i++)
 			{
-				g2 = g1.clone();
-				g2[i] = g1[i] - 1;
+				dg2 = new DensityGrid(dg1);
+				dg2.vary(i, -1);
 
-				// If g2 is in grid_list...
-				if(this.grid_list.containsKey(g2))
+				// If dg2 is in grid_list...
+				if(this.grid_list.containsKey(dg2))
 				{
-					CharacteristicVector cv2 = this.grid_list.get(g2);
+					CharacteristicVector cv2 = this.grid_list.get(dg2);
 					int class2 = cv2.getGridClass();				// The current density grid's class
 					
 					if (class1 == -1)
 					{
 						cv1.setGridClass(class2);
-						this.grid_clusters.get(class2).addGrid(g1);
+						this.grid_clusters.get(class2).addGrid(dg1);
 						class1 = class2;
 					}
 					else
@@ -854,18 +876,18 @@ public class Dstream extends AbstractClusterer {
 					}
 				}
 
-				g2[i] = g1[i] + 1;
+				dg2.vary(i, 2);
 
-				// If g2 is in grid_list...
-				if(this.grid_list.containsKey(g2))
+				// If dg2 is in grid_list...
+				if(this.grid_list.containsKey(dg2))
 				{
-					CharacteristicVector cv2 = this.grid_list.get(g2);
+					CharacteristicVector cv2 = this.grid_list.get(dg2);
 					int class2 = cv2.getGridClass();				// The current density grid's class
 					
 					if (class1 == -1)
 					{
 						cv1.setGridClass(class2);
-						this.grid_clusters.get(class2).addGrid(g1);
+						this.grid_clusters.get(class2).addGrid(dg1);
 						class1 = class2;
 					}
 					else
@@ -884,7 +906,7 @@ public class Dstream extends AbstractClusterer {
 			}
 		}
 
-		// If g1 had no neighbouring density grids, or had no neighbouring density grids which were
+		// If dg1 had no neighbouring density grids, or had no neighbouring density grids which were
 		// assigned to a cluster, then assign it to a new cluster.
 		if (class1 == -1)
 		{
@@ -905,16 +927,16 @@ public class Dstream extends AbstractClusterer {
 	public void mergeClusters (int smallClus, int bigClus)
 	{		
 		// Iterate through the density grids in grid_list to find those which are in highClass
-		for (Map.Entry<int[], CharacteristicVector> grid : grid_list.entrySet())
+		for (Map.Entry<DensityGrid, CharacteristicVector> grid : grid_list.entrySet())
 		{
-			int[] g = grid.getKey();
+			DensityGrid dg = grid.getKey();
 			CharacteristicVector cv = grid.getValue();
 
 			// Assign density grids in highClass to lowClass
 			if(cv.getGridClass() == smallClus)
 			{
 				cv.setGridClass(bigClus);
-				this.grid_list.replace(g, cv);
+				this.grid_list.replace(dg, cv);
 			}
 		}
 
@@ -927,14 +949,14 @@ public class Dstream extends AbstractClusterer {
 		{
 			GridCluster gc = grid_clusters.get(i);
 
-			for (Map.Entry<int[], Boolean> grid : gc.getGrids().entrySet())
+			for (Map.Entry<DensityGrid, Boolean> grid : gc.getGrids().entrySet())
 			{
-				int[]g = grid.getKey();
-				CharacteristicVector cv = grid_list.get(g);
+				DensityGrid dg = grid.getKey();
+				CharacteristicVector cv = grid_list.get(dg);
 
 				cv.setGridClass(i);
 
-				this.grid_list.put(g, cv);
+				this.grid_list.put(dg, cv);
 			}
 		}
 	}
@@ -944,14 +966,14 @@ public class Dstream extends AbstractClusterer {
 	 */
 	public void updateGridListDensity()
 	{
-		for (Map.Entry<int[], CharacteristicVector> grid : grid_list.entrySet())
+		for (Map.Entry<DensityGrid, CharacteristicVector> grid : grid_list.entrySet())
 		{
-			int[] g = grid.getKey();
+			DensityGrid dg = grid.getKey();
 			CharacteristicVector cvOfG = grid.getValue();
 
 			cvOfG.updateGridDensity(this.getCurrTime(), this.getDecayFactor());
 
-			this.grid_list.replace(g, cvOfG);
+			this.grid_list.replace(dg, cvOfG);
 		}
 	}
 
@@ -1001,5 +1023,43 @@ public class Dstream extends AbstractClusterer {
 	public double getDL()
 	{
 		return this.dl;
+	}
+	
+	public void printout(Instance inst)
+	{
+		System.out.print("Instance //");
+		
+		for (int i = 0 ; i < inst.numAttributes() ; i++)
+			System.out.print(" "+inst.value(i));
+		
+		System.out.println("//");
+	}
+	
+	public void printDStreamState()
+	{
+		System.out.println("State of D-Stream algorithm");
+		System.out.println("Time Gap Option: "+this.gap);
+		System.out.println("Decay Factor Option: "+this.decayFactor);
+		System.out.println("C_m Option: "+this.cm);
+		System.out.println("C_l Option: "+this.cl);
+		System.out.println("Beta Option: "+this.beta);
+		
+		
+	}
+	
+	public void printDensityGrid(DensityGrid dg)
+	{
+		int[] dgCoord = dg.getCoordinates();
+		CharacteristicVector cv = this.grid_list.get(dg);
+		System.out.print("Key:");
+		for (int i = 0 ; i < dg.dimensions ; i++)
+			System.out.print(" "+dgCoord[i]);
+		System.out.print("\nCharacteristicVector: ");
+		System.out.print("(tg "+cv.getUpdateTime()+") ");
+		System.out.print("(tm "+cv.getRemoveTime()+") ");
+		System.out.print("(D "+cv.getGridDensity()+") ");
+		System.out.print("(class "+cv.getGridClass()+") ");
+		System.out.print("(status "+cv.isSporadic()+")\n");
+		
 	}
 }
