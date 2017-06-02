@@ -1,5 +1,7 @@
 package moa.clusterers.dstream;
 
+import java.util.ArrayList;
+
 /**
  * Density Grids are defined in equation 3 (section 3.1) of Chen and Tu 2007 as:
  * In D-Stream, we partition the d−dimensional space S into density grids. Suppose 
@@ -91,42 +93,75 @@ public class DensityGrid extends Object
 	@Override
 	public int hashCode()
 	{
-		int[] primes = {31, 37, 41, 43, 47, 53, 59};
+		//int[] primes = {31, 37, 41, 43, 47, 53, 59};
 		int hc = 1;
 		
 		for (int i = 0 ; i < dimensions ; i++)
 		{
-			hc = (hc * primes[i%7]) + coordinates[i];
+			hc = (hc * 31) + coordinates[i];
 		}
 		
 		return hc;
 	}
 	
 	/**
-	 * Varies one of the density grid's coordinates (c) by a given value (v). Usually v is 1 or -1
-	 * and the method is used to iterate through the density grid's neighbours.
+	 * Generates an Array List of neighbours for this density grid by varying each coordinate
+	 * by one in either direction. Does not test whether the generated neighbours are valid as 
+	 * DensityGrid is not aware of the number of partitions in each dimension.
 	 * 
-	 * @param c the index of the coordinate to be varied
-	 * @param v the amount of offset to be applied
+	 * @return an Array List of neighbours for this density grid
 	 */
-	public void vary(int c, int v)
+	public ArrayList<DensityGrid> getNeighbours()
 	{
-		if (c >= 0 && c < dimensions)
-			coordinates[c] += v;
+		ArrayList<DensityGrid> neighbours = new ArrayList<DensityGrid>();
+		DensityGrid h;
+		int[] hCoord;
+		
+		for (int i = 0 ; i < this.dimensions ; i++)
+		{
+			hCoord = this.getCoordinates();
+			
+			hCoord[i] = hCoord[i]-1;
+			h = new DensityGrid(hCoord);
+			neighbours.add(h);
+			
+			hCoord[i] = hCoord[i]+2;
+			h = new DensityGrid(hCoord);
+			neighbours.add(h);
+		}
+		
+		return neighbours;
 	}
 	
 	/**
 	 * @return coordinates the coordinates of the density grid
 	 */
 	public int[] getCoordinates() {
-		return coordinates;
+		return this.coordinates;
 	}
 
 	/**
 	 * @return dimensions the number of dimensions for the density grid
 	 */
 	public int getDimensions() {
-		return dimensions;
+		return this.dimensions;
 	}
 
+	/**
+	 * Overrides Object's toString method.
+	 * 
+	 * @return a String listing each coordinate of the density grid
+	 */
+	@Override
+	public String toString()
+	{
+		StringBuilder sb = new StringBuilder(15 + (2*dimensions));
+		sb.append("Density Grid:");
+		for (int i = 0 ; i < dimensions ; i++)
+		{
+			sb.append(" "+coordinates[i]);
+		}
+		
+		return sb.toString();
+	}
 }

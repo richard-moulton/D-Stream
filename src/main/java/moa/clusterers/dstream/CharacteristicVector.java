@@ -92,7 +92,7 @@ public class CharacteristicVector {
 	 * @return the time at which the grid was last updated
 	 */
 	public int getUpdateTime() {
-		return updateTime;
+		return this.updateTime;
 	}
 
 	/**
@@ -100,13 +100,14 @@ public class CharacteristicVector {
 	 */
 	public void setUpdateTime(int updateTime) {
 		this.updateTime = updateTime;
+		this.attChange = true;
 	}
 
 	/**
 	 * @return the last time at which the grid was removed from grid_list
 	 */
 	public int getRemoveTime() {
-		return removeTime;
+		return this.removeTime;
 	}
 
 	/**
@@ -114,13 +115,14 @@ public class CharacteristicVector {
 	 */
 	public void setRemoveTime(int removeTime) {
 		this.removeTime = removeTime;
+		this.attChange = true;
 	}
 
 	/**
 	 * @return the density of the grid
 	 */
 	public double getGridDensity() {
-		return gridDensity;
+		return this.gridDensity;
 	}
 
 	/**
@@ -128,13 +130,14 @@ public class CharacteristicVector {
 	 */
 	public void setGridDensity(double gridDensity) {
 		this.gridDensity = gridDensity;
+		this.attChange = true;
 	}
 
 	/**
 	 * @return the class to which the grid is assigned
 	 */
 	public int getGridClass() {
-		return gridClass;
+		return this.gridClass;
 	}
 
 	/**
@@ -142,13 +145,14 @@ public class CharacteristicVector {
 	 */
 	public void setGridClass(int gridClass) {
 		this.gridClass = gridClass;
+		this.attChange = true;
 	}
 
 	/**
 	 * @return TRUE if the characteristic vector is sporadic, FALSE otherwise
 	 */
 	public boolean isSporadic() {
-		return isSporadic;
+		return this.isSporadic;
 	}
 
 	/**
@@ -157,6 +161,7 @@ public class CharacteristicVector {
 	 */
 	public void setSporadic(boolean isSporadic) {
 		this.isSporadic = isSporadic;
+		this.attChange = true;
 	}
 
 	/**
@@ -165,11 +170,29 @@ public class CharacteristicVector {
 	 * 
 	 * @param currTime the data stream's current internal time
 	 * @param decayFactor the value of lambda
+	 * @param dl the threshold for sparse grids
+	 * @param dm the threshold for dense grids
+	 * @param addRecord TRUE if a record has been added to the density grid, FALSE otherwise
 	 */
-	public void updateGridDensity(int currTime, double decayFactor)
+	public void updateGridDensity(int currTime, double decayFactor, double dl, double dm, boolean addRecord)
 	{
-		double densityOfG = (Math.pow(decayFactor, currTime-getUpdateTime()) * getGridDensity())+1.0;
+		// Update the density grid's density
+		double densityOfG = this.getGridDensity();
+		
+		if(addRecord)
+			densityOfG = (Math.pow(decayFactor, currTime-getUpdateTime()) * densityOfG)+1.0;
+		else
+			densityOfG = (Math.pow(decayFactor, currTime-getUpdateTime()) * densityOfG);
+		
 		setGridDensity(densityOfG);
+		
+		// Evaluate whether or not the density grid is now SPARSE, DENSE or TRANSITIONAL
+		if (this.isSparse(dl))
+			this.attribute = SPARSE;
+		else if (this.isDense(dm))
+			this.attribute = DENSE;
+		else
+			this.attribute = TRANSITIONAL;
 	}
 	
 	/**
@@ -219,7 +242,7 @@ public class CharacteristicVector {
 	 * @return the characteristic vector's attribute {SPARSE, TRANSITIONAL, DENSE}
 	 */
 	public int getAttribute() {
-		return attribute;
+		return this.attribute;
 	}
 
 	/**
@@ -227,6 +250,34 @@ public class CharacteristicVector {
 	 * density update, false otherwise.
 	 */
 	public boolean isAttChanged() {
-		return attChange;
+		return this.attChange;
+	}
+	
+	/**
+	 * Overrides Object's toString method.
+	 * 
+	 * @return a String listing each value in the characteristic vector tuple
+	 */
+	@Override
+	public String toString()
+	{
+		StringBuilder sb = new StringBuilder(80);
+		
+		sb.append("CharacteristicVector / A (tg tm D class status): ");
+		
+		if (this.getAttribute() == DENSE)
+			sb.append("D ");
+		else if (this.getAttribute() == SPARSE)
+			sb.append("S ");
+		else
+			sb.append("T ");
+		
+		sb.append(this.getUpdateTime()+" ");
+		sb.append(this.getRemoveTime()+" ");
+		sb.append(this.getGridDensity()+" ");
+		sb.append(this.getGridClass()+" ");
+		sb.append(this.isSporadic());
+		
+		return sb.toString();
 	}
 }
