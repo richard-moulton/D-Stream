@@ -1,12 +1,15 @@
 package moa.clusterers.dstream;
 
 import moa.cluster.Cluster;
+import moa.clusterers.macro.NonConvexCluster;
+
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
-
 import com.yahoo.labs.samoa.instances.Instance;
+import moa.cluster.CFCluster;
 
 /**
  * Grid Clusters are defined in Definition 3.6 of Chen and Tu 2007 as:
@@ -18,19 +21,21 @@ import com.yahoo.labs.samoa.instances.Instance;
  * Proceedings of the 13th ACM SIGKDD international conference on Knowledge discovery and
  * data mining, 2007, pp. 133–142.
  */
-public class GridCluster extends Cluster
+public class GridCluster extends NonConvexCluster
 {
 	private HashMap<DensityGrid, Boolean> grids;
 	private int clusterLabel;
 	
-	public GridCluster(int label)
+	public GridCluster(CFCluster cluster, List<CFCluster> microclusters, int label)
 	{
+		super(cluster, microclusters);
 		this.grids = new HashMap<DensityGrid,Boolean>();
 		this.clusterLabel = label;
 	}
 	
-	public GridCluster(HashMap<DensityGrid,Boolean> hashMap, int label)
+	public GridCluster(CFCluster cluster, List<CFCluster> microclusters, HashMap<DensityGrid,Boolean> hashMap, int label)
 	{
+		super(cluster, microclusters);
 		this.grids = new HashMap<DensityGrid,Boolean>();
 		
 		for (Map.Entry<DensityGrid, Boolean> grid : hashMap.entrySet())
@@ -179,13 +184,6 @@ public class GridCluster extends Cluster
 		sb.append("Cluster of grids.");
 	}
 
-
-	@Override
-	public double[] getCenter() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
 	/**
 	 * @return the number of density grids in the cluster
 	 */
@@ -194,23 +192,27 @@ public class GridCluster extends Cluster
 		return this.grids.size();
 	}
 
-
+	/**
+	 * Iterates through the DensityGrids in the cluster and calculates the inclusion probability for each.
+	 * 
+	 * @return 1.0 if instance matches any of the density grids; 0.0 otherwise.
+	 */
 	@Override
 	public double getInclusionProbability(Instance instance) {
-		// TODO Auto-generated method stub
-		return 0;
-	}
-
-
-	@Override
-	public Instance sample(Random random) {
-		// TODO Auto-generated method stub
-		return null;
+		Iterator<Map.Entry<DensityGrid, Boolean>> gridIter = grids.entrySet().iterator();
+		
+		while(gridIter.hasNext())
+		{
+			Map.Entry<DensityGrid, Boolean> grid = gridIter.next();
+			DensityGrid dg = grid.getKey();
+			if(dg.getInclusionProbability(instance) == 1.0)
+				return 1.0;
+		}
+		
+		return 0.0;
 	}
 	
 	/**
-	 * Overrides Object's toString method.
-	 * 
 	 * @return a String listing each coordinate of the density grid
 	 */
 	@Override

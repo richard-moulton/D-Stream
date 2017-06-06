@@ -1,6 +1,8 @@
 package moa.clusterers.dstream;
 
 import java.util.ArrayList;
+import com.yahoo.labs.samoa.instances.Instance;
+import moa.cluster.CFCluster;
 
 /**
  * Density Grids are defined in equation 3 (section 3.1) of Chen and Tu 2007 as:
@@ -16,10 +18,10 @@ import java.util.ArrayList;
  * Proceedings of the 13th ACM SIGKDD international conference on Knowledge discovery and
  * data mining, 2007, pp. 133–142.
  */
-public class DensityGrid extends Object
+public class DensityGrid extends CFCluster
 {
-	int[] coordinates;
-	int dimensions;
+	private int[] coordinates;
+	private int dimensions;
 	
 	/**
 	 * A constructor method for a density grid
@@ -28,12 +30,19 @@ public class DensityGrid extends Object
 	 */
 	public DensityGrid(int[]c)
 	{
+		super(c.length);
 		dimensions = c.length;
 		coordinates = new int[dimensions];
+		N = 1;
+		LS = new double[dimensions];
+		SS = new double[dimensions];
 		
 		for (int i = 0 ; i < dimensions ; i++)
 		{
-			coordinates[i] = c[i];
+			int cI = c[i];
+			coordinates[i] = cI;
+			LS[i] += (double)cI;
+			SS[i] += Math.pow((double)cI, 2);
 		}
 	}
 
@@ -44,13 +53,20 @@ public class DensityGrid extends Object
 	 */
 	public DensityGrid(DensityGrid dg)
 	{
+		super(dg.getDimensions());
 		int[] dgCoord = dg.getCoordinates();
 		dimensions = dg.getDimensions();
 		coordinates = new int[dimensions];
+		N = 1;
+		LS = new double[dimensions];
+		SS = new double[dimensions];
 		
 		for (int i = 0 ; i < dimensions ; i++)
 		{
-			coordinates[i] = dgCoord[i];
+			int cI = dgCoord[i];
+			coordinates[i] = cI;
+			LS[i] += (double)cI;
+			SS[i] += Math.pow((double)cI, 2);
 		}
 	}
 	
@@ -115,12 +131,10 @@ public class DensityGrid extends Object
 	{
 		ArrayList<DensityGrid> neighbours = new ArrayList<DensityGrid>();
 		DensityGrid h;
-		int[] hCoord;
+		int[] hCoord = this.getCoordinates();
 		
 		for (int i = 0 ; i < this.dimensions ; i++)
 		{
-			hCoord = this.getCoordinates();
-			
 			hCoord[i] = hCoord[i]-1;
 			h = new DensityGrid(hCoord);
 			neighbours.add(h);
@@ -128,6 +142,8 @@ public class DensityGrid extends Object
 			hCoord[i] = hCoord[i]+2;
 			h = new DensityGrid(hCoord);
 			neighbours.add(h);
+			
+			hCoord[i] = hCoord[i]-1;
 		}
 		
 		return neighbours;
@@ -148,8 +164,6 @@ public class DensityGrid extends Object
 	}
 
 	/**
-	 * Overrides Object's toString method.
-	 * 
 	 * @return a String listing each coordinate of the density grid
 	 */
 	@Override
@@ -163,5 +177,41 @@ public class DensityGrid extends Object
 		}
 		
 		return sb.toString();
+	}
+
+	/**
+	 * Returns a reference to the DensityGrid.
+	 * 
+	 * @return this density grid.
+	 */
+	@Override
+	public CFCluster getCF() {
+		return this;
+	}
+
+	/**
+	 * Provides the probability of the argument instance belonging to the density grid in question.
+	 * 
+	 * @return 1.0 if the instance equals the density grid's coordinates; 0.0 otherwise.
+	 */
+	@Override
+	public double getInclusionProbability(Instance instance) {
+		for (int i = 0 ; i < this.dimensions ; i++)
+		{
+			if ((int) instance.value(i) != this.coordinates[i])
+				return 0.0;
+		}
+		
+		return 1.0;
+	}
+
+	/**
+	 * Provides the radius of a density grid.
+	 * 
+	 * @return	1.0, approximating a unit hypercube of dimension d.
+	 */
+	@Override
+	public double getRadius() {
+		return 1.0;
 	}
 }
