@@ -1,15 +1,14 @@
 package moa.clusterers.dstream;
 
-import moa.cluster.Cluster;
-import moa.clusterers.macro.NonConvexCluster;
-
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
+
 import com.yahoo.labs.samoa.instances.Instance;
+
 import moa.cluster.CFCluster;
+import moa.clusterers.macro.NonConvexCluster;
 
 /**
  * Grid Clusters are defined in Definition 3.6 of Chen and Tu 2007 as:

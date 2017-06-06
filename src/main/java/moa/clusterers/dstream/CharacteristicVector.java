@@ -100,7 +100,6 @@ public class CharacteristicVector {
 	 */
 	public void setUpdateTime(int updateTime) {
 		this.updateTime = updateTime;
-		this.attChange = true;
 	}
 
 	/**
@@ -115,7 +114,6 @@ public class CharacteristicVector {
 	 */
 	public void setRemoveTime(int removeTime) {
 		this.removeTime = removeTime;
-		this.attChange = true;
 	}
 
 	/**
@@ -130,7 +128,6 @@ public class CharacteristicVector {
 	 */
 	public void setGridDensity(double gridDensity) {
 		this.gridDensity = gridDensity;
-		this.attChange = true;
 	}
 
 	/**
@@ -176,6 +173,9 @@ public class CharacteristicVector {
 	 */
 	public void updateGridDensity(int currTime, double decayFactor, double dl, double dm, boolean addRecord)
 	{
+		// record the last attribute
+		int lastAtt = this.getAttribute();
+		
 		// Update the density grid's density
 		double densityOfG = this.getGridDensity();
 		
@@ -193,6 +193,12 @@ public class CharacteristicVector {
 			this.attribute = DENSE;
 		else
 			this.attribute = TRANSITIONAL;
+		
+		// Evaluate whether or not the density grid attribute has changed and set the attChange flag accordingly
+		if (this.getAttribute() == lastAtt)
+			this.attChange = false;
+		else
+			this.attChange = true;
 	}
 	
 	/**
@@ -263,7 +269,7 @@ public class CharacteristicVector {
 	{
 		StringBuilder sb = new StringBuilder(80);
 		
-		sb.append("CharacteristicVector / A (tg tm D class status): ");
+		sb.append("CharacteristicVector / A (tg tm D class status) chgflag: ");
 		
 		if (this.getAttribute() == DENSE)
 			sb.append("D ");
@@ -276,7 +282,14 @@ public class CharacteristicVector {
 		sb.append(this.getRemoveTime()+" ");
 		sb.append(this.getGridDensity()+" ");
 		sb.append(this.getGridClass()+" ");
-		sb.append(this.isSporadic());
+		
+		if (this.isSporadic())
+			sb.append("Sporadic ");
+		else
+			sb.append("Normal ");
+		
+		if (this.isAttChanged())
+			sb.append("CHANGED");
 		
 		return sb.toString();
 	}
