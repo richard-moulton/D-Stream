@@ -11,7 +11,6 @@ import java.util.Iterator;
 import java.util.ArrayList;
 import java.util.Map;
 
-import com.github.javacliparser.IntOption;
 import com.github.javacliparser.FloatOption;
 import com.yahoo.labs.samoa.instances.Instance;
 
@@ -500,12 +499,13 @@ public class Dstream extends AbstractClusterer {
 	 * Implements the procedure given in Figure 4 of Chen and Tu 2007
 	 */
 	private void adjustClustering() {
-		System.out.println("ADJUST CLUSTERING CALLED");
-		//printDStreamState();
+		System.out.println("ADJUST CLUSTERING CALLED (time"+this.getCurrTime()+")");
+		printDStreamState();
 		//printGridClusters();
 		// 1. Update the density of all grids in grid_list
 
 		updateGridListDensity();
+		printGridList();
 		
 		// 2. For each grid dg whose attribute is changed since last call
 		//    a. If dg is sparse
@@ -686,13 +686,14 @@ public class Dstream extends AbstractClusterer {
 
 		//printGridList();
 		printGridClusters();
+		System.out.println();
 	}
 
 	/**
 	 * Implements the procedure described in section 4.2 of Chen and Tu 2007
 	 */
 	private void removeSporadic() {
-		System.out.println("\nREMOVE SPORADIC CALLED");
+		System.out.print("REMOVE SPORADIC CALLED");
 		// 1. For each grid g in grid_list
 		//    a. If g is sporadic
 		//       i. If currTime - tg > gap, delete g from grid_list
@@ -704,6 +705,7 @@ public class Dstream extends AbstractClusterer {
 		// For each grid g in grid_list
 		Iterator<Map.Entry<DensityGrid, CharacteristicVector>> glIter = this.grid_list.entrySet().iterator();
 		HashMap<DensityGrid, CharacteristicVector> newGL = new HashMap<DensityGrid, CharacteristicVector>();
+		ArrayList<DensityGrid> remGL = new ArrayList<DensityGrid>();
 				
 		while(glIter.hasNext())
 		{
@@ -717,8 +719,12 @@ public class Dstream extends AbstractClusterer {
 				// If currTime - tg > gap, delete g from grid_list
 				if ((this.getCurrTime() - cv.getUpdateTime()) > gap)
 				{
-					this.cluster_list.get(cv.getGridClass()).removeGrid(dg);
-					this.grid_list.remove(dg);
+					int dgClass = cv.getGridClass();
+					
+					if (dgClass != -1)
+						this.cluster_list.get(dgClass).removeGrid(dg);
+					
+					remGL.add(dg);
 					//System.out.println("Removed "+dg.toString());
 				}
 				// Else if (S1 && S2), mark as sporadic - Else mark as normal
@@ -744,6 +750,14 @@ public class Dstream extends AbstractClusterer {
 			this.grid_list.put(grid.getKey(), grid.getValue());
 		}
 		
+		System.out.println(" - Removed "+remGL.size()+" grids from grid_list.");
+		Iterator<DensityGrid> remIter = remGL.iterator();
+		
+		while(remIter.hasNext())
+		{
+			this.grid_list.remove(remIter.next());
+		}
+		
 	}
 
 	/**
@@ -757,7 +771,7 @@ public class Dstream extends AbstractClusterer {
 		if(cv.getGridDensity() < densityThresholdFunction(cv.getUpdateTime(), this.cl, this.getDecayFactor(), this.N))
 		{
 			// Check S2
-			if(cv.getRemoveTime() != -1 && this.getCurrTime() >= ((1 + this.beta)*cv.getRemoveTime()))
+			if(cv.getRemoveTime() != -1 || this.getCurrTime() >= ((1 + this.beta)*cv.getRemoveTime()))
 				return true;
 		}
 		

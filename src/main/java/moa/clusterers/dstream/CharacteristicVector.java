@@ -269,7 +269,7 @@ public class CharacteristicVector {
 	{
 		StringBuilder sb = new StringBuilder(80);
 		
-		sb.append("CharacteristicVector / A (tg tm D class status) chgflag: ");
+		sb.append("CV / A (tg tm D class status) chgflag: ");
 		
 		if (this.getAttribute() == DENSE)
 			sb.append("D ");

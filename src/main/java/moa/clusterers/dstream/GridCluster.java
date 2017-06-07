@@ -223,7 +223,11 @@ public class GridCluster extends NonConvexCluster
 			DensityGrid dg = grids.getKey();
 			Boolean inside = grids.getValue();
 			
-			sb.append("("+dg.toString()+" Inside: "+inside+") ");
+			sb.append("("+dg.toString());
+			if (inside)
+				sb.append(" In)");
+			else
+				sb.append(" Out)");
 		}
 		
 		return sb.toString();
