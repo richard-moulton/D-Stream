@@ -22,6 +22,7 @@ import moa.clusterers.macro.NonConvexCluster;
  */
 public class GridCluster extends NonConvexCluster
 {
+	private static final long serialVersionUID = -6498733665209706370L;
 	private HashMap<DensityGrid, Boolean> grids;
 	private int clusterLabel;
 	
@@ -74,7 +75,7 @@ public class GridCluster extends NonConvexCluster
 		DensityGrid dg;
 		Boolean inside;
 		Iterator<Map.Entry<DensityGrid, Boolean>> grid;
-		HashMap<DensityGrid, Boolean> newCluster = new HashMap();
+		HashMap<DensityGrid, Boolean> newCluster = new HashMap<DensityGrid, Boolean>();
 		
 		System.out.println("Absorb cluster "+gridClus.getClusterLabel()+" into cluster "+this.getClusterLabel()+".");
 		
@@ -113,7 +114,6 @@ public class GridCluster extends NonConvexCluster
 	 */
 	public Boolean isInside(DensityGrid dg)
 	{
-		int d = dg.getDimensions();
 		Boolean inside = true;
 		
 		Iterator<DensityGrid> dgNeighbourhood = dg.getNeighbours().iterator();

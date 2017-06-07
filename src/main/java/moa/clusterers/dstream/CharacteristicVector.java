@@ -26,7 +26,7 @@ public class CharacteristicVector {
 	private int updateTime;
 	
 	/**
-	 * t_m in the characteristic vector tuple;* 
+	 * t_m in the characteristic vector tuple;
 	 * the last time when g is removed from grid_list as a sporadic
 	 * grid (if ever).
 	 */
@@ -40,9 +40,9 @@ public class CharacteristicVector {
 	
 	/**
 	 * label in the characteristic vector tuple; 
-	 * the class label of the grid
+	 * the cluster label of the grid
 	 */
-	private int gridClass;
+	private int label;
 	
 	/**
 	 * status in the characteristic vector tuple; 
@@ -75,7 +75,7 @@ public class CharacteristicVector {
 		this.setUpdateTime(tg);
 		this.setRemoveTime(tm);
 		this.setGridDensity(D);
-		this.setGridClass(label);
+		this.setLabel(label);
 		this.setSporadic(status);
 		
 		if (this.isSparse(dl))
@@ -131,18 +131,17 @@ public class CharacteristicVector {
 	}
 
 	/**
-	 * @return the class to which the grid is assigned
+	 * @return the label of the cluster to which the grid is assigned
 	 */
-	public int getGridClass() {
-		return this.gridClass;
+	public int getLabel() {
+		return this.label;
 	}
 
 	/**
-	 * @param gridClass the class to assign the grid to
+	 * @param newLabel the label of the cluster to assign the grid to
 	 */
-	public void setGridClass(int gridClass) {
-		this.gridClass = gridClass;
-		this.attChange = true;
+	public void setLabel(int newLabel) {
+		this.label = newLabel;
 	}
 
 	/**
@@ -158,7 +157,6 @@ public class CharacteristicVector {
 	 */
 	public void setSporadic(boolean isSporadic) {
 		this.isSporadic = isSporadic;
-		this.attChange = true;
 	}
 
 	/**
@@ -167,11 +165,28 @@ public class CharacteristicVector {
 	 * 
 	 * @param currTime the data stream's current internal time
 	 * @param decayFactor the value of lambda
+	 */
+	public void densityWithNew(int currTime, double decayFactor)
+	{
+		// Update the density grid's density
+		double densityOfG = this.getGridDensity();
+		
+		densityOfG = (Math.pow(decayFactor, currTime-getUpdateTime()) * densityOfG)+1.0;
+		
+		setGridDensity(densityOfG);
+	}
+	
+	/**
+	 * Implements the update the density of all grids step given at line 2 of 
+	 * both Fig 3 and Fig 4 of Chen and Tu 2007.
+	 * 
+	 * @param currTime the data stream's current internal time
+	 * @param decayFactor the value of lambda
 	 * @param dl the threshold for sparse grids
 	 * @param dm the threshold for dense grids
 	 * @param addRecord TRUE if a record has been added to the density grid, FALSE otherwise
 	 */
-	public void updateGridDensity(int currTime, double decayFactor, double dl, double dm, boolean addRecord)
+	public void updateGridDensity(int currTime, double decayFactor, double dl, double dm)
 	{
 		// record the last attribute
 		int lastAtt = this.getAttribute();
@@ -179,10 +194,7 @@ public class CharacteristicVector {
 		// Update the density grid's density
 		double densityOfG = this.getGridDensity();
 		
-		if(addRecord)
-			densityOfG = (Math.pow(decayFactor, currTime-getUpdateTime()) * densityOfG)+1.0;
-		else
-			densityOfG = (Math.pow(decayFactor, currTime-getUpdateTime()) * densityOfG);
+		densityOfG = (Math.pow(decayFactor, currTime-getUpdateTime()) * densityOfG);
 		
 		setGridDensity(densityOfG);
 		
@@ -195,10 +207,10 @@ public class CharacteristicVector {
 			this.attribute = TRANSITIONAL;
 		
 		// Evaluate whether or not the density grid attribute has changed and set the attChange flag accordingly
-		if (this.getAttribute() == lastAtt)
-			this.attChange = false;
-		else
-			this.attChange = true;
+			if (this.getAttribute() == lastAtt)
+				this.attChange = false;
+			else
+				this.attChange = true;
 	}
 	
 	/**
@@ -281,7 +293,7 @@ public class CharacteristicVector {
 		sb.append(this.getUpdateTime()+" ");
 		sb.append(this.getRemoveTime()+" ");
 		sb.append(this.getGridDensity()+" ");
-		sb.append(this.getGridClass()+" ");
+		sb.append(this.getLabel()+" ");
 		
 		if (this.isSporadic())
 			sb.append("Sporadic ");

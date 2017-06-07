@@ -20,6 +20,7 @@ import moa.cluster.CFCluster;
  */
 public class DensityGrid extends CFCluster
 {
+	private static final long serialVersionUID = 7527683701564950206L;
 	private int[] coordinates;
 	private int dimensions;
 	

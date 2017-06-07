@@ -5,7 +5,6 @@ TODO:
 - [x] Complete 'adjustClustering' method in DStream;
 - [x] Write 'getClusteringResult' method in DStream;
 - [x] Add functionality to check whether it is faster, when assigning a grid to a cluster, if it is faster to iterate through grid_list or through that grid's neighbours;
-- [ ] Ensure that 'assignGridtoCluster' accounts for all boundary conditions;
 - [x] Generate Javadoc; and
 - [ ] Add functionality to test clusters for connectedness/split clusters if necessary.
 
