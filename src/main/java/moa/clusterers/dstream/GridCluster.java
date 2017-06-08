@@ -24,6 +24,7 @@ public class GridCluster extends NonConvexCluster
 {
 	private static final long serialVersionUID = -6498733665209706370L;
 	private HashMap<DensityGrid, Boolean> grids;
+	private HashMap<DensityGrid, Boolean> visited;
 	private int clusterLabel;
 	
 	public GridCluster(CFCluster cluster, List<CFCluster> microclusters, int label)
@@ -189,6 +190,65 @@ public class GridCluster extends NonConvexCluster
 	@Override
 	public double getWeight() {
 		return this.grids.size();
+	}
+	
+	/**
+	 * Tests a grid cluster for connectedness according to Definition 3.4, Grid Group, from
+	 * Chen and Tu 2007.
+	 * 
+	 * Selects one density grid in the grid cluster as a starting point and iterates repeatedly
+	 * through its neighbours until no more density grids in the grid cluster can be visited.
+	 *  
+	 * @return TRUE if the cluster represent one single grid group; FALSE otherwise.
+	 */
+	public boolean isConnected()
+	{
+		this.visited = new HashMap<DensityGrid, Boolean>();
+		Iterator<DensityGrid> initIter = this.grids.keySet().iterator();
+		DensityGrid dg;
+		
+		if (initIter.hasNext())
+		{
+			dg = initIter.next();
+			visited.put(dg, this.grids.get(dg));
+			boolean changesMade;
+			
+			do{
+				changesMade = false;
+				
+				Iterator<Map.Entry<DensityGrid, Boolean>> visIter = this.visited.entrySet().iterator();
+				HashMap<DensityGrid, Boolean> toAdd = new HashMap<DensityGrid, Boolean>();
+				
+				while(visIter.hasNext() && toAdd.isEmpty())
+				{
+					Map.Entry<DensityGrid, Boolean> toVisit = visIter.next();
+					DensityGrid dg2V = toVisit.getKey();
+					
+					Iterator<DensityGrid> dg2VNeighbourhood = dg2V.getNeighbours().iterator();
+					
+					while(dg2VNeighbourhood.hasNext())
+					{
+						DensityGrid dg2VN = dg2VNeighbourhood.next();
+						
+						if(this.grids.containsKey(dg2VN) && !this.visited.containsKey(dg2VN))
+							toAdd.put(dg2VN, this.grids.get(dg2VN));
+					}
+					
+				}
+				
+				if(!toAdd.isEmpty())
+				{
+					this.visited.putAll(toAdd);
+					changesMade = true;
+				}
+			}while(changesMade);
+			
+		}		
+		
+		if (this.visited.size() == this.grids.size())
+			return true;
+		else
+			return false;
 	}
 
 	/**

@@ -170,12 +170,14 @@ public class DensityGrid extends CFCluster
 	@Override
 	public String toString()
 	{
-		StringBuilder sb = new StringBuilder(15 + (2*dimensions));
+		StringBuilder sb = new StringBuilder(15 + (2*this.dimensions));
 		sb.append("DG:");
-		for (int i = 0 ; i < dimensions ; i++)
+		for (int i = 0 ; i < this.dimensions ; i++)
 		{
-			sb.append(" "+coordinates[i]);
+			sb.append(" "+this.coordinates[i]);
 		}
+		
+		sb.append(" HC:"+this.hashCode());
 		
 		return sb.toString();
 	}

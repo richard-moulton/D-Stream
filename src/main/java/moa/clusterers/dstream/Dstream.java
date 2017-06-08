@@ -417,11 +417,13 @@ public class Dstream extends AbstractClusterer {
 
 	/**
 	 * Makes first change available to it by following the steps:
-	 * a. For each cluster c
-	 * b. For each outside grid g of c
-	 * c. For each neighbouring grid h of g
-	 * d. If h belongs to c', label c and c' with the label of the largest cluster
-	 * e. Else if h is transitional, assign it to c
+	 * <ol type=a>
+	 * <li>For each cluster c</li>
+	 * <li>For each outside grid g of c</li>
+	 * <li>For each neighbouring grid h of g</li>
+	 * <li>If h belongs to c', label c and c' with the label of the largest cluster</li>
+	 * <li>Else if h is transitional, assign it to c</li>
+	 * </ol>
 	 * 
 	 * @return TRUE if a change was made to any cluster's labels, FALSE otherwise
 	 */
@@ -497,7 +499,10 @@ public class Dstream extends AbstractClusterer {
 	}
 	
 	/**
+	 * Performs the periodic adjustment of clusters every 'gap' timesteps.
 	 * Implements the procedure given in Figure 4 of Chen and Tu 2007
+	 * 
+	 * @see moa.clusterers.dstream.Dstream.gap
 	 */
 	private void adjustClustering() {
 		System.out.println("ADJUST CLUSTERING CALLED (time"+this.getCurrTime()+")");
@@ -512,9 +517,38 @@ public class Dstream extends AbstractClusterer {
 		//    a. If dg is sparse
 		//    b. If dg is dense
 		//    c. If dg is transitional
+		boolean changesMade = false;
+		
+		do{
+			changesMade=inspectChangedGrids();
+		}while(changesMade);
+
+		//printGridList();
+		/**printGridClusters();
+		 *System.out.println("Wait...");
+		 *try {
+		 *	System.in.read();
+		 *} catch (IOException e) {
+		 *	e.printStackTrace();
+		 *}
+		 */
+	}
+
+	/**
+	 * Inspects each density grid in grid_list whose attribute has changed since the last 
+	 * call to adjustClustering. Implements lines 3/4/7/19 of the procedure given in Figure 
+	 * 4 of Chen and Tu 2007.
+	 * 
+	 * @return TRUE if any grids are updated; FALSE otherwise.
+	 */
+	private boolean inspectChangedGrids()
+	{
 		HashMap<DensityGrid, CharacteristicVector> glNew = new HashMap<DensityGrid, CharacteristicVector>();
-		for (Map.Entry<DensityGrid, CharacteristicVector> grid : grid_list.entrySet())
+		Iterator<Map.Entry<DensityGrid, CharacteristicVector>> gridIter = this.grid_list.entrySet().iterator();
+		
+		while (gridIter.hasNext() && glNew.isEmpty())
 		{
+			Map.Entry<DensityGrid, CharacteristicVector> grid = gridIter.next();
 			DensityGrid dg = grid.getKey();
 			CharacteristicVector cv = grid.getValue();
 			int dgClass = cv.getLabel();
@@ -532,25 +566,19 @@ public class Dstream extends AbstractClusterer {
 			}
 		}
 		
-		//System.out.println("There are "+glNew.size()+" entries to update from glNew to grid_list.");
-		for(Map.Entry<DensityGrid, CharacteristicVector> grid: glNew.entrySet())
+		// If there are grids in glNew, update the corresponding grids in grid_list and clean up the cluster list
+		if (!glNew.isEmpty())
 		{
-			this.grid_list.put(grid.getKey(), grid.getValue());
+			//System.out.println("There are "+glNew.size()+" entries to update from glNew to grid_list.");
+			this.grid_list.putAll(glNew);
+			cleanClusters();
+			return true;
 		}
-
-		
-		
-		//printGridList();
-		/**printGridClusters();
-		 *System.out.println("Wait...");
-		 *try {
-		 *	System.in.read();
-		 *} catch (IOException e) {
-		 *	e.printStackTrace();
-		 *}
-		 */
+		else
+			return false;
 	}
-
+	
+	
 	/**
 	 * Adjusts the clustering of a sparse density grid. Implements lines 5 and 6 from Figure 4 of Chen and Tu 2007.
 	 * 
@@ -567,11 +595,124 @@ public class Dstream extends AbstractClusterer {
 		if (dgClass != NO_CLASS)
 		{
 			//System.out.print(" Remove it from cluster "+dgClass+".");
-			this.cluster_list.get(dgClass).removeGrid(dg);
+			GridCluster gc = this.cluster_list.get(dgClass);
+			gc.removeGrid(dg);
 			cv.setLabel(NO_CLASS);
 			glNew.put(dg, cv);
+			
+			if(!gc.isConnected())
+				glNew.putAll(recluster(gc));
 		}
 		//System.out.println();
+		return glNew;
+	}
+	
+	/**
+	 * Reclusters a gridcluster into two (or more) constituent clusters when it has been identified that the original cluster
+	 * is no longer a grid group. It does so by echoing the initial clustering procedure over only those grids in gc.
+	 * 
+	 * @param gc the gridcluster to be reclustered
+	 * 
+	 * @return a HashMap<DensityGrid, CharacteristicVector> containing density grids for update after this iteration
+	 */
+	private HashMap<DensityGrid, CharacteristicVector> recluster (GridCluster gc)
+	{
+		HashMap<DensityGrid, CharacteristicVector> glNew = new HashMap<DensityGrid, CharacteristicVector>();
+		Iterator<Map.Entry<DensityGrid,Boolean>> gcIter = gc.getGrids().entrySet().iterator();
+		ArrayList<GridCluster> newClusterList = new ArrayList<GridCluster>();
+		
+		// Assign every dense grid in gc to its own cluster, assign all other grids to NO_CLASS
+		while (gcIter.hasNext())
+		{
+			Map.Entry<DensityGrid,Boolean> grid = gcIter.next();
+			DensityGrid dg = grid.getKey();
+			CharacteristicVector cvOfG = this.grid_list.get(dg);
+
+			if(cvOfG.getAttribute() == DENSE)
+			{
+				int gridClass = this.cluster_list.size();
+				cvOfG.setLabel(gridClass);
+				GridCluster newClus = new GridCluster ((CFCluster)dg, new ArrayList<CFCluster>(), gridClass);
+				newClus.addGrid(dg);
+				newClusterList.add(newClus);
+			}
+			else
+				cvOfG.setLabel(NO_CLASS);
+
+			gc.removeGrid(dg);
+			glNew.put(dg, cvOfG);	
+		}
+		
+		boolean changesMade;
+		
+		// While changes can be made...
+		do
+		{
+			changesMade = false;
+			Iterator<GridCluster> newClusIter = newClusterList.iterator();
+
+			// a. For each cluster c
+			while (newClusIter.hasNext())
+			{
+				GridCluster c = newClusIter.next();
+
+				// b. for each grid, dg, of c
+				for (Map.Entry<DensityGrid, Boolean> grid : c.getGrids().entrySet())
+				{
+					DensityGrid dg = grid.getKey();
+					Boolean inside = grid.getValue();
+					
+					// b. for each OUTSIDE grid, dg, of c
+					if (!inside)
+					{
+						// c. for each neighbouring grid, dgprime, of dg
+						Iterator<DensityGrid> dgNeighbourhood = dg.getNeighbours().iterator();
+						
+						while(dgNeighbourhood.hasNext())
+						{
+							DensityGrid dgprime = dgNeighbourhood.next();
+							
+							if(glNew.containsKey(dgprime))
+							{
+								CharacteristicVector cv1 = glNew.get(dg);
+								CharacteristicVector cv2 = glNew.get(dgprime);
+								int class1 = cv1.getLabel();
+								int class2 = cv2.getLabel();
+
+								// ...and if dgprime isn't already in the same cluster as dg...
+								if (class1 != class2)
+								{
+									// If dgprime is in cluster c', merge c and c' into the larger of the two
+									if (class2 != NO_CLASS)
+									{
+										//System.out.println("C is "+class1+" and C' is "+class2+".");
+										if (newClusterList.get(class1).getWeight() < newClusterList.get(class2).getWeight())
+											mergeClusters(class1, class2);
+										else
+											mergeClusters(class2, class1);
+
+										changesMade = true;
+
+									}
+									// If dgprime is transitional and outside of c, assign it to c
+									else if (cv2.isTransitional(dm, dl))
+									{
+										cv2.setLabel(class1);
+										newClusterList.get(class1).addGrid(dgprime);
+										glNew.put(dg, cv2);
+										changesMade = true;
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}while(changesMade);
+		
+		// Update the cluster list with the newly formed clusters
+		this.cluster_list.addAll(newClusterList);
+		
 		return glNew;
 	}
 	
@@ -728,6 +869,15 @@ public class Dstream extends AbstractClusterer {
 		return glNew;
 	}
 	
+	/**
+	 * Adjusts the clustering of a transitional density grid. Implements lines 20 and 21 from Figure 4 of Chen and Tu 2007.
+	 * 
+	 * @param dg the dense density grid being adjusted
+	 * @param cv the characteristic vector of dg
+	 * @param dgClass the cluster to which dg belonged
+	 * 
+	 * @return a HashMap<DensityGrid, CharacteristicVector> containing density grids for update after this iteration
+	 */
 	private HashMap<DensityGrid, CharacteristicVector> adjustForTransitionalGrid(DensityGrid dg, CharacteristicVector cv, int dgClass)
 	{
 		//System.out.print("transitional.");
@@ -777,12 +927,16 @@ public class Dstream extends AbstractClusterer {
 		return glNew;
 	}
 	
+	/**
+	 * Iterates through cluster_list to ensure that all empty clusters have been removed and
+	 * that all cluster IDs match the cluster's index in cluster_list.
+	 */
 	private void cleanClusters()
 	{
-		// Check to see if there are any empty clusters
 		Iterator<GridCluster> clusIter = this.cluster_list.iterator();
 		ArrayList<GridCluster> toRem = new ArrayList<GridCluster>();
 
+		// Check to see if there are any empty clusters
 		while(clusIter.hasNext())
 		{
 			GridCluster c = clusIter.next();
@@ -791,39 +945,39 @@ public class Dstream extends AbstractClusterer {
 				toRem.add(c);
 		}
 
+		// Remove empty clusters
 		if (!toRem.isEmpty())
 		{
-			// Remove empty clusters
 			clusIter = toRem.iterator();
 
 			while(clusIter.hasNext())
 			{
 				this.cluster_list.remove(clusIter.next());
 			}
+		}
 
-			// Adjust remaining clusters as necessary
-			clusIter = this.cluster_list.iterator();
+		// Adjust remaining clusters as necessary
+		clusIter = this.cluster_list.iterator();
 
-			while(clusIter.hasNext())
+		while(clusIter.hasNext())
+		{
+			GridCluster c = clusIter.next();
+			int index = this.cluster_list.indexOf(c);
+
+			if(c.getClusterLabel() != index)
 			{
-				GridCluster c = clusIter.next();
-				int index = this.cluster_list.indexOf(c);
+				c.setClusterLabel(index);
 
-				if(c.getClusterLabel() != index)
+				Iterator<Map.Entry<DensityGrid, Boolean>> gridsOfClus = c.getGrids().entrySet().iterator();
+
+				while(gridsOfClus.hasNext())
 				{
-					c.setClusterLabel(index);
-
-					Iterator<Map.Entry<DensityGrid, Boolean>> gridsOfClus = c.getGrids().entrySet().iterator();
-
-					while(gridsOfClus.hasNext())
-					{
-						DensityGrid dg = gridsOfClus.next().getKey();
-						CharacteristicVector cv = this.grid_list.get(dg);
-						cv.setLabel(index);
-						this.grid_list.put(dg, cv);
-					}
-
+					DensityGrid dg = gridsOfClus.next().getKey();
+					CharacteristicVector cv = this.grid_list.get(dg);
+					cv.setLabel(index);
+					this.grid_list.put(dg, cv);
 				}
+
 			}
 		}
 	}
