@@ -23,6 +23,7 @@ public class DensityGrid extends CFCluster
 	private static final long serialVersionUID = 7527683701564950206L;
 	private int[] coordinates;
 	private int dimensions;
+	private boolean isVisited;
 	
 	/**
 	 * A constructor method for a density grid
@@ -32,19 +33,21 @@ public class DensityGrid extends CFCluster
 	public DensityGrid(int[]c)
 	{
 		super(c.length);
-		dimensions = c.length;
-		coordinates = new int[dimensions];
+		this.dimensions = c.length;
+		this.coordinates = new int[this.dimensions];
 		N = 1;
-		LS = new double[dimensions];
-		SS = new double[dimensions];
+		LS = new double[this.dimensions];
+		SS = new double[this.dimensions];
 		
-		for (int i = 0 ; i < dimensions ; i++)
+		for (int i = 0 ; i < this.dimensions ; i++)
 		{
 			int cI = c[i];
-			coordinates[i] = cI;
+			this.coordinates[i] = cI;
 			LS[i] += (double)cI;
 			SS[i] += Math.pow((double)cI, 2);
 		}
+		
+		this.isVisited = false;
 	}
 
 	/**
@@ -56,19 +59,21 @@ public class DensityGrid extends CFCluster
 	{
 		super(dg.getDimensions());
 		int[] dgCoord = dg.getCoordinates();
-		dimensions = dg.getDimensions();
-		coordinates = new int[dimensions];
+		this.dimensions = dg.getDimensions();
+		this.coordinates = new int[this.dimensions];
 		N = 1;
-		LS = new double[dimensions];
-		SS = new double[dimensions];
+		LS = new double[this.dimensions];
+		SS = new double[this.dimensions];
 		
-		for (int i = 0 ; i < dimensions ; i++)
+		for (int i = 0 ; i < this.dimensions ; i++)
 		{
 			int cI = dgCoord[i];
-			coordinates[i] = cI;
+			this.coordinates[i] = cI;
 			LS[i] += (double)cI;
 			SS[i] += Math.pow((double)cI, 2);
 		}
+		
+		this.isVisited = false;
 	}
 	
 	/**
@@ -113,9 +118,9 @@ public class DensityGrid extends CFCluster
 		//int[] primes = {31, 37, 41, 43, 47, 53, 59};
 		int hc = 1;
 		
-		for (int i = 0 ; i < dimensions ; i++)
+		for (int i = 0 ; i < this.dimensions ; i++)
 		{
-			hc = (hc * 31) + coordinates[i];
+			hc = (hc * 31) + this.coordinates[i];
 		}
 		
 		return hc;
@@ -216,5 +221,19 @@ public class DensityGrid extends CFCluster
 	@Override
 	public double getRadius() {
 		return 1.0;
+	}
+
+	/**
+	 * @return the isVisited
+	 */
+	public boolean isVisited() {
+		return isVisited;
+	}
+
+	/**
+	 * @param isVisited the isVisited to set
+	 */
+	public void setVisited(boolean isVisited) {
+		this.isVisited = isVisited;
 	}
 }

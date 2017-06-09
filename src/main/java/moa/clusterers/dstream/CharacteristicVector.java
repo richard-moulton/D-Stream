@@ -142,7 +142,6 @@ public class CharacteristicVector {
 	 */
 	public void setLabel(int newLabel) {
 		this.label = newLabel;
-		this.attChange = false;
 	}
 
 	/**

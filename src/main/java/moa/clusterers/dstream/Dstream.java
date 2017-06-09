@@ -558,8 +558,10 @@ public class Dstream extends AbstractClusterer {
 			CharacteristicVector cv = grid.getValue();
 			int dgClass = cv.getLabel();
 			
-			if(cv.isAttChanged())
+			if(cv.isAttChanged() && !dg.isVisited())
 			{
+				dg.setVisited(true);
+				glNew.put(dg, cv);
 				System.out.print(dg.toString()+" is changed and now ");
 				if (cv.getAttribute() == SPARSE)
 					glNew.putAll(adjustForSparseGrid(dg, cv, dgClass));
@@ -706,9 +708,9 @@ public class Dstream extends AbstractClusterer {
 								{
 									//System.out.println("C is "+class1+" and C' is "+class2+".");
 									if (newClusterList.get(class1).getWeight() < newClusterList.get(class2).getWeight())
-										mergeNewClusters(glNew, class1, class2);
+										glNew.putAll(mergeNewClusters(glNew, class1, class2));
 									else
-										mergeNewClusters(glNew, class2, class1);
+										glNew.putAll(mergeNewClusters(glNew, class2, class1));
 
 									return true;
 
@@ -718,7 +720,7 @@ public class Dstream extends AbstractClusterer {
 								{
 									cv2.setLabel(class1);
 									newClusterList.get(class1).addGrid(dgprime);
-									glNew.put(dg, cv2);
+									glNew.put(dgprime, cv2);
 									return true;
 								}
 							}
@@ -1133,10 +1135,7 @@ public class Dstream extends AbstractClusterer {
 			}
 		}
 		
-		for(Map.Entry<DensityGrid, CharacteristicVector> grid : newGL.entrySet())
-		{
-			this.grid_list.put(grid.getKey(), grid.getValue());
-		}
+		this.grid_list.putAll(newGL);
 		
 		//System.out.println(" - Removed "+remGL.size()+" grids from grid_list.");
 		Iterator<DensityGrid> remIter = remGL.iterator();
@@ -1159,7 +1158,7 @@ public class Dstream extends AbstractClusterer {
 		if(cv.getGridDensity() < densityThresholdFunction(cv.getUpdateTime(), this.cl, this.getDecayFactor(), this.N))
 		{
 			// Check S2
-			if(cv.getRemoveTime() != -1 || this.getCurrTime() >= ((1 + this.beta)*cv.getRemoveTime()))
+			if(cv.getRemoveTime() == -1 || this.getCurrTime() >= ((1 + this.beta)*cv.getRemoveTime()))
 				return true;
 		}
 		
@@ -1214,7 +1213,8 @@ public class Dstream extends AbstractClusterer {
 	}
 
 	/**
-	 * Iterates through grid_list and updates the density for each density grid therein
+	 * Iterates through grid_list and updates the density for each density grid therein.
+	 * Also marks each density grid as unvisited for this call to adjustClustering.
 	 */
 	private void updateGridListDensity()
 	{
@@ -1223,6 +1223,7 @@ public class Dstream extends AbstractClusterer {
 			DensityGrid dg = grid.getKey();
 			CharacteristicVector cvOfG = grid.getValue();
 
+			dg.setVisited(false);
 			cvOfG.updateGridDensity(this.getCurrTime(), this.getDecayFactor(), this.getDL(), this.getDM());
 
 			this.grid_list.replace(dg, cvOfG);
@@ -1283,6 +1284,16 @@ public class Dstream extends AbstractClusterer {
 			System.out.print(inst.value(i)+" ");
 	}
 	
+	/**
+	 * Prints out the values of the parameters associated with this instance of the D-Stream algorithm:
+	 * <ol>
+	 * <li>gap;</li>
+	 * <li>decay factor (lambda);</li>
+	 * <li>C_m and C_l;</li>
+	 * <li>D_m and D_l; and</li>
+	 * <li>beta.</li>
+	 * </ol>
+	 */
 	public void printDStreamState()
 	{
 		System.out.println("State of D-Stream algorithm");
@@ -1292,6 +1303,12 @@ public class Dstream extends AbstractClusterer {
 		System.out.println("Beta: "+this.beta);
 	}
 	
+	/**
+	 * Iterates through grid_list and prints out each density grid therein as a string.
+	 * 
+	 * @see moa.clusterers.dstream.Dstream.grid_list
+	 * @see moa.clusterers.dstream.DensityGrid.toString
+	 */
 	public void printGridList()
 	{
 		System.out.println("Grid List. Size "+this.grid_list.size()+".");
@@ -1304,6 +1321,12 @@ public class Dstream extends AbstractClusterer {
 		}
 	}
 	
+	/**
+	 * Iterates through cluster_list and prints out each grid cluster therein as a string.
+	 * 
+	 * @see moa.clusterers.dstream.Dstream.cluster_list
+	 * @see moa.clusterers.dstream.GridCluster.toString
+	 */
 	public void printGridClusters()
 	{
 		System.out.println("List of Clusters. Total "+this.cluster_list.size()+".");
