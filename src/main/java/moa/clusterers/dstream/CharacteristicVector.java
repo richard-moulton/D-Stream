@@ -192,11 +192,9 @@ public class CharacteristicVector {
 		int lastAtt = this.getAttribute();
 		
 		// Update the density grid's density
-		double densityOfG = this.getGridDensity();
+		double densityOfG = (Math.pow(decayFactor, (currTime-this.getUpdateTime())) * this.getGridDensity());
 		
-		densityOfG = (Math.pow(decayFactor, currTime-getUpdateTime()) * densityOfG);
-		
-		setGridDensity(densityOfG);
+		this.setGridDensity(densityOfG);
 		
 		// Evaluate whether or not the density grid is now SPARSE, DENSE or TRANSITIONAL
 		if (this.isSparse(dl))

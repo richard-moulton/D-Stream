@@ -21,8 +21,24 @@ import moa.cluster.CFCluster;
 public class DensityGrid extends CFCluster
 {
 	private static final long serialVersionUID = 7527683701564950206L;
+	
+	/**
+	 * For each dimension, its space Si, i =1, ··· ,d is divided into pi partitions as
+	 * Si = Si,1 U Si,2 U ··· U Si,pi
+	 * A density grid g that is composed of S1,j1 ×S2,j2 ···×Sd,jd , ji =1, ...,pi,
+	 * has coordinates (j1,j2, ··· ,jd).
+	 */
 	private int[] coordinates;
+	
+	/**
+	 * The value of 'd' for the d-dimensional space S considered by D-Stream.
+	 */
 	private int dimensions;
+	
+	/**
+	 * Flag denoting whether this density grid has been inspected during the adjustClustering()
+	 * step of D-Stream.
+	 */
 	private boolean isVisited;
 	
 	/**

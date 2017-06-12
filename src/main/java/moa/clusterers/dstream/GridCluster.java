@@ -58,6 +58,17 @@ public class GridCluster extends NonConvexCluster
 	{
 		Boolean inside = isInside(dg);
 		this.grids.put(dg, inside);
+		
+		for(Map.Entry<DensityGrid, Boolean> gridToUpdate : this.grids.entrySet())
+		{
+			Boolean inside2U = gridToUpdate.getValue();
+			
+			if(!inside2U)
+			{
+				DensityGrid dg2U = gridToUpdate.getKey();
+				this.grids.put(dg2U, this.isInside(dg2U));
+			}
+		}
 	}
 	
 	/**
@@ -78,7 +89,7 @@ public class GridCluster extends NonConvexCluster
 		Iterator<Map.Entry<DensityGrid, Boolean>> grid;
 		HashMap<DensityGrid, Boolean> newCluster = new HashMap<DensityGrid, Boolean>();
 		
-		System.out.println("Absorb cluster "+gridClus.getClusterLabel()+" into cluster "+this.getClusterLabel()+".");
+		//System.out.println("Absorb cluster "+gridClus.getClusterLabel()+" into cluster "+this.getClusterLabel()+".");
 		
 		// Add each density grid from gridClus into this.grids
 		grid = gridClus.getGrids().entrySet().iterator();
@@ -88,7 +99,7 @@ public class GridCluster extends NonConvexCluster
 			dg = entry.getKey();
 			this.grids.put(dg, false);
 		}
-		System.out.println("...density grids added");
+		//System.out.println("...density grids added");
 		
 		// Determine which density grids in this.grids are 'inside' and which are 'outside'
 		grid = this.getGrids().entrySet().iterator();
@@ -100,7 +111,7 @@ public class GridCluster extends NonConvexCluster
 			newCluster.put(dg, inside);
 		}
 		this.grids = newCluster;
-		System.out.println("...inside/outside determined");
+		//System.out.println("...inside/outside determined");
 
 	}
 	
