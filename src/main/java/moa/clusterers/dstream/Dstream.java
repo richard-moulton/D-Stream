@@ -112,6 +112,14 @@ public class Dstream extends AbstractClusterer {
 	private HashMap<DensityGrid,CharacteristicVector> grid_list;
 	
 	/**
+	 * A list of all density grids which have been deleted;
+	 * allows the recording of tm - the last time when the 
+	 * grid is removed from grid list as a sporadic grid (if ever).
+	 */
+	private HashMap<DensityGrid,Integer> deleted_grids;
+	
+	
+	/**
 	 * A list of all Grid Clusters, which are defined in 
 	 * Definition 3.6 of Chen and Tu 2007
 	 */
@@ -172,7 +180,7 @@ public class Dstream extends AbstractClusterer {
 	 */
 	@Override
 	public void resetLearningImpl() {
-		//System.out.println("Dstream . resetLearningImpl");
+		System.out.println("Dstream . resetLearningImpl");
 		this.setCurrTime(0);
 		//System.out.println("Current time set...");
 		
@@ -184,6 +192,7 @@ public class Dstream extends AbstractClusterer {
 
 		this.initialized = false;
 		this.grid_list = new HashMap<DensityGrid, CharacteristicVector>();
+		this.deleted_grids = new HashMap<DensityGrid, Integer>();
 		this.cluster_list = new ArrayList<GridCluster>();
 		//System.out.println("Data structures initialized...");
 
@@ -195,7 +204,7 @@ public class Dstream extends AbstractClusterer {
 		this.minVals = null;
 		this.maxVals = null;
 		//System.out.println("Dependent values initialized...\n");
-		//printDStreamState();
+		printDStreamState();
 	}
 
 	/**
@@ -268,26 +277,27 @@ public class Dstream extends AbstractClusterer {
 
 		if (recalculateN)
 		{
-			//System.out.print(" recalculateN:");
+			System.out.print(" recalculateN:");
 			int n = 1;
 			for (int i = 0 ; i < this.d ; i++)
 			{
-				//System.out.print(" "+n);
+				System.out.print(" "+n);
 				if (inst.attribute(i).isNominal())
 					n = n * inst.attribute(i).numValues();
 				else
 					n = n * (1+maxVals[i]-minVals[i]);
 			}
-			//System.out.print(" "+n);
+			System.out.print(" "+n);
 			this.N = n;
 			this.dl = this.cl/(this.N * (1.0 - this.decayFactor));
 			this.dm = this.cm/(this.N * (1.0 - this.decayFactor));
-			//System.out.print(" dl = " + this.dl + ", dm = " + this.dm);
+			System.out.print(" dl = " + this.dl + ", dm = " + this.dm);
 			
 			//Calculate the value for gap using the method defined in eq 26 of Chen and Tu 2007 
 			double optionA = Math.log(this.cl/this.cm)/Math.log(this.getDecayFactor());
-			double optionB = Math.log((this.N-this.cm)/(this.N-this.cl))/Math.log(this.getDecayFactor());
+			double optionB = Math.log(((double)this.N-this.cm)/((double)this.N-this.cl))/Math.log(this.getDecayFactor());
 			gap = (int)Math.floor(Math.min(optionA, optionB));
+			System.out.println(" A is "+optionA+", B is "+optionB+" and gap = "+gap);
 		}
 
 		dg = new DensityGrid(g);
@@ -299,7 +309,14 @@ public class Dstream extends AbstractClusterer {
 		if(!this.grid_list.containsKey(dg))
 		{
 			//System.out.print("3 - dg wasn't in grid_list!");
-			cv = new CharacteristicVector(this.getCurrTime(), -1, this.getDecayFactor(), -1, false, this.getDL(), this.getDM());
+			if(this.deleted_grids.containsKey(dg))
+			{
+				cv = new CharacteristicVector(this.getCurrTime(), this.deleted_grids.get(dg).intValue(), this.getDecayFactor(), -1, false, this.getDL(), this.getDM());
+				this.deleted_grids.remove(dg);
+			}
+			else
+				cv = new CharacteristicVector(this.getCurrTime(), -1, this.getDecayFactor(), -1, false, this.getDL(), this.getDM());
+			
 			this.grid_list.put(dg, cv);
 			//System.out.print(" The size of grid_list is now "+grid_list.size());
 		}
@@ -323,8 +340,8 @@ public class Dstream extends AbstractClusterer {
 		// 6. If tc mod gap == 0, then:
 		//    a. Detect and remove sporadic grids from grid_list
 		//    b. Adjust clustering
-		//System.out.print(" & Current Time is " + this.getCurrTime() + " and gap is " + this.gap);
-		if (this.getCurrTime() % gap == 0 && this.getCurrTime() != 0)
+		System.out.print(" & Current Time is " + this.getCurrTime() + " and gap is " + this.gap);
+		if (this.getCurrTime() != 0 && this.getCurrTime() % gap == 0)
 		{
 			if (this.getCurrTime() == gap)
 			{
@@ -1182,6 +1199,7 @@ public class Dstream extends AbstractClusterer {
 		{
 			DensityGrid sporadicDG = remIter.next();
 			//System.out.println("Removing sporadic grid "+sporadicDG.toString()+" at time "+this.getCurrTime()+".");
+			this.deleted_grids.put(sporadicDG, new Integer(this.getCurrTime()));
 			this.grid_list.remove(sporadicDG);
 		}
 		
