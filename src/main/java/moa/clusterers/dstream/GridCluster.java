@@ -253,12 +253,12 @@ public class GridCluster extends NonConvexCluster
 		
 		if (this.visited.size() == this.grids.size())
 		{
-			System.out.println("The cluster is still connected. "+this.visited.size()+" of "+this.grids.size()+" reached.");
+			//System.out.println("The cluster is still connected. "+this.visited.size()+" of "+this.grids.size()+" reached.");
 			return true;
 		}
 		else
 		{
-			System.out.println("The cluster is no longer connected. "+this.visited.size()+" of "+this.grids.size()+" reached.");
+			//System.out.println("The cluster is no longer connected. "+this.visited.size()+" of "+this.grids.size()+" reached.");
 			return false;
 		}
 	}

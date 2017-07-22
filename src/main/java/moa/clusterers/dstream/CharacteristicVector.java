@@ -197,9 +197,9 @@ public class CharacteristicVector {
 		// Update the density grid's density
 		double densityOfG = this.getGridDensity();
 		
-		System.out.print("["+decayFactor+"^("+currTime+" - "+this.getDensityTimeStamp()+") * "+densityOfG+"] + 1.0 = ");
+		//System.out.print("["+decayFactor+"^("+currTime+" - "+this.getDensityTimeStamp()+") * "+densityOfG+"] + 1.0 = ");
 		densityOfG = (Math.pow(decayFactor, (currTime-this.getUpdateTime())) * densityOfG)+1.0;
-		System.out.println(densityOfG);
+		//System.out.println(densityOfG);
 		
 		this.setGridDensity(densityOfG, currTime);
 	}
