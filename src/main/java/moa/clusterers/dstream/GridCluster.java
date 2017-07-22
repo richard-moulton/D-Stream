@@ -126,8 +126,6 @@ public class GridCluster extends NonConvexCluster
 	 */
 	public Boolean isInside(DensityGrid dg)
 	{
-		Boolean inside = true;
-		
 		Iterator<DensityGrid> dgNeighbourhood = dg.getNeighbours().iterator();
 		
 		while(dgNeighbourhood.hasNext())
@@ -135,19 +133,18 @@ public class GridCluster extends NonConvexCluster
 			DensityGrid dgprime = dgNeighbourhood.next();
 			if(!this.grids.containsKey(dgprime))
 			{
-				inside = false;
-				break;
+				return false;
 			}
 		}
 		
-		return inside;
+		return true;
 	}
 	
 	/**
 	 * Inside Grids are defined in Definition 3.5 of Chen and Tu 2007 as:
 	 * Consider a grid group G and a grid g ∈ G, suppose g =(j1, ··· ,jd), if g has 
 	 * neighboring grids in every dimension i =1, ·· · ,d, then g is an inside grid 
-	 * in G.Otherwise g is an outside grid in G.
+	 * in G. Otherwise g is an outside grid in G.
 	 * 
 	 * @param dg the density grid being labelled as inside or outside
 	 * @param dgH the density grid being proposed for addition
@@ -155,7 +152,6 @@ public class GridCluster extends NonConvexCluster
 	 */
 	public Boolean isInside(DensityGrid dg, DensityGrid dgH)
 	{
-		Boolean inside = true;
 		Iterator<DensityGrid> dgNeighbourhood = dg.getNeighbours().iterator();
 		
 		while(dgNeighbourhood.hasNext())
@@ -163,12 +159,11 @@ public class GridCluster extends NonConvexCluster
 			DensityGrid dgprime = dgNeighbourhood.next();
 			if(!this.grids.containsKey(dgprime) && !dgprime.equals(dgH))
 			{
-				inside = false;
-				break;
+				return false;
 			}
 		}
 		
-		return inside;
+		return true;
 	}
 
 	/**

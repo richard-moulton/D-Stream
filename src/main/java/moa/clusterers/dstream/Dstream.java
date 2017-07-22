@@ -294,9 +294,9 @@ public class Dstream extends AbstractClusterer {
 			System.out.print(" dl = " + this.dl + ", dm = " + this.dm);
 			
 			//Calculate the value for gap using the method defined in eq 26 of Chen and Tu 2007 
-			double optionA = Math.log(this.cl/this.cm)/Math.log(this.getDecayFactor());
-			double optionB = Math.log(((double)this.N-this.cm)/((double)this.N-this.cl))/Math.log(this.getDecayFactor());
-			gap = (int)Math.floor(Math.min(optionA, optionB));
+			double optionA = this.cl/this.cm;
+			double optionB = ((double)this.N-this.cm)/((double)this.N-this.cl);
+			gap = (int)Math.floor(Math.log(Math.max(optionA, optionB))/Math.log(this.getDecayFactor()));
 			System.out.println(" A is "+optionA+", B is "+optionB+" and gap = "+gap);
 		}
 
@@ -311,13 +311,14 @@ public class Dstream extends AbstractClusterer {
 			//System.out.print("3 - dg wasn't in grid_list!");
 			if(this.deleted_grids.containsKey(dg))
 			{
-				cv = new CharacteristicVector(this.getCurrTime(), this.deleted_grids.get(dg).intValue(), this.getDecayFactor(), -1, false, this.getDL(), this.getDM());
+				cv = new CharacteristicVector(this.getCurrTime(), this.deleted_grids.get(dg).intValue(), 1.0, -1, false, this.getDL(), this.getDM());
 				this.deleted_grids.remove(dg);
 			}
 			else
-				cv = new CharacteristicVector(this.getCurrTime(), -1, this.getDecayFactor(), -1, false, this.getDL(), this.getDM());
+				cv = new CharacteristicVector(this.getCurrTime(), -1, 1.0, -1, false, this.getDL(), this.getDM());
 			
 			this.grid_list.put(dg, cv);
+			//System.out.print(" "+dg.toString()+" "+cv.toString());
 			//System.out.print(" The size of grid_list is now "+grid_list.size());
 		}
 		// 4. Update the characteristic vector of dg
@@ -340,7 +341,7 @@ public class Dstream extends AbstractClusterer {
 		// 6. If tc mod gap == 0, then:
 		//    a. Detect and remove sporadic grids from grid_list
 		//    b. Adjust clustering
-		System.out.print(" & Current Time is " + this.getCurrTime() + " and gap is " + this.gap);
+		//System.out.println("\nCurrent Time is " + this.getCurrTime() + " and gap is " + this.gap);
 		if (this.getCurrTime() != 0 && this.getCurrTime() % gap == 0)
 		{
 			if (this.getCurrTime() == gap)
@@ -382,7 +383,7 @@ public class Dstream extends AbstractClusterer {
 	 * Implements the procedure given in Figure 3 of Chen and Tu 2007
 	 */
 	private void initialClustering() {
-		//System.out.println("INITIAL CLUSTERING CALLED");
+		System.out.println("INITIAL CLUSTERING CALLED");
 		//printDStreamState();
 		// 1. Update the density of all grids in grid_list
 
@@ -529,6 +530,7 @@ public class Dstream extends AbstractClusterer {
 	 */
 	private void adjustClustering() {
 		System.out.println("ADJUST CLUSTERING CALLED (time"+this.getCurrTime()+")");
+		printDStreamState();
 		//printDStreamState();
 		//printGridClusters();
 		// 1. Update the density of all grids in grid_list
@@ -1162,7 +1164,7 @@ public class Dstream extends AbstractClusterer {
 			if (cv.isSporadic())
 			{
 				// If currTime - tg > gap, delete g from grid_list
-				if ((this.getCurrTime() - cv.getUpdateTime()) > gap)
+				if ((this.getCurrTime() - cv.getUpdateTime()) >= gap)
 				{
 					int dgClass = cv.getLabel();
 					
@@ -1213,7 +1215,7 @@ public class Dstream extends AbstractClusterer {
 	private boolean checkIfSporadic(CharacteristicVector cv)
 	{
 		// Check S1
-		if(cv.getGridDensity() < densityThresholdFunction(cv.getUpdateTime(), this.cl, this.getDecayFactor(), this.N))
+		if(cv.getCurrGridDensity(this.getCurrTime(), this.getDecayFactor()) < densityThresholdFunction(cv.getDensityTimeStamp(), this.cl, this.getDecayFactor(), this.N))
 		{
 			// Check S2
 			if(cv.getRemoveTime() == -1 || this.getCurrTime() >= ((1 + this.beta)*cv.getRemoveTime()))
@@ -1233,9 +1235,7 @@ public class Dstream extends AbstractClusterer {
 	 */
 	private double densityThresholdFunction(int tg, double cl, double decayFactor, int N)
 	{
-		double densityThreshold = (cl * (1.0 - Math.pow(decayFactor, (this.getCurrTime()-tg+1))))/(N * (1.0 - decayFactor));
-		
-		return densityThreshold;
+		return (cl * (1.0 - Math.pow(decayFactor, (this.getCurrTime()-tg+1.0))))/(N * (1.0 - decayFactor));
 	}
 	
 	/**
@@ -1376,8 +1376,9 @@ public class Dstream extends AbstractClusterer {
 		{
 			DensityGrid dg = grid.getKey();
 			CharacteristicVector cv = grid.getValue();
+			double dtf = densityThresholdFunction(cv.getUpdateTime(), this.cl, this.getDecayFactor(), this.N);
 			
-			System.out.println(dg.toString()+" "+cv.toString());
+			System.out.println(dg.toString()+" "+cv.toString()+" // Density Threshold Function = "+dtf);
 		}
 	}
 	
