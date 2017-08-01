@@ -287,7 +287,7 @@ public class Dstream extends AbstractClusterer {
 				if (inst.attribute(i).isNominal())
 					n = n * inst.attribute(i).numValues();
 				else
-					n = n * (1+maxVals[i]-minVals[i]);
+					n = n * (3+maxVals[i]-minVals[i]);
 			}
 			//System.out.print(" "+n);
 			this.N = n;
@@ -418,7 +418,7 @@ public class Dstream extends AbstractClusterer {
 			else
 				cvOfG.setLabel(NO_CLASS);
 
-			System.out.println();
+			//System.out.println();
 			newGL.put(dg, cvOfG);
 		}
 
