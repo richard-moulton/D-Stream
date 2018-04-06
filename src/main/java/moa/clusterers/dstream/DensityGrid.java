@@ -60,13 +60,19 @@ public class DensityGrid extends CFCluster
 	private boolean isVisited;
 	
 	/**
+	 * The radius of the density grid for MOA's purposes.
+	 */
+	private double gridWidth;
+		
+	/**
 	 * A constructor method for a density grid
 	 * 
 	 * @param c the coordinates of the density grid
 	 */
-	public DensityGrid(int[]c)
+	public DensityGrid(int[]c, double gW)
 	{
 		super(c.length);
+		this.gridWidth = gW;
 		this.dimensions = c.length;
 		this.coordinates = new int[this.dimensions];
 		N = 1;
@@ -93,6 +99,7 @@ public class DensityGrid extends CFCluster
 	{
 		super(dg.getDimensions());
 		int[] dgCoord = dg.getCoordinates();
+		this.gridWidth = dg.getGridWidth();
 		this.dimensions = dg.getDimensions();
 		this.coordinates = new int[this.dimensions];
 		N = 1;
@@ -176,11 +183,11 @@ public class DensityGrid extends CFCluster
 		for (int i = 0 ; i < this.dimensions ; i++)
 		{
 			hCoord[i] = hCoord[i]-1;
-			h = new DensityGrid(hCoord);
+			h = new DensityGrid(hCoord, this.gridWidth);
 			neighbours.add(h);
 			
 			hCoord[i] = hCoord[i]+2;
-			h = new DensityGrid(hCoord);
+			h = new DensityGrid(hCoord, this.gridWidth);
 			neighbours.add(h);
 			
 			hCoord[i] = hCoord[i]-1;
@@ -237,14 +244,42 @@ public class DensityGrid extends CFCluster
 	 * @return 1.0 if the instance equals the density grid's coordinates; 0.0 otherwise.
 	 */
 	@Override
-	public double getInclusionProbability(Instance instance) {
+	public double getInclusionProbability(Instance instance)
+	{	
+		/*System.out.print("Instance:");
 		for (int i = 0 ; i < this.dimensions ; i++)
 		{
-			if ((int) instance.value(i) != this.coordinates[i])
-				return 0.0;
+			System.out.print(" "+instance.value(i));
+		}
+		System.out.print(" (");
+		for (int i = 0 ; i < this.dimensions ; i++)
+		{
+			System.out.print(" "+((int) (instance.value(i)/this.gridWidth)));
+		}
+		System.out.print(") // Coordinates:");
+		for (int i = 0 ; i < this.dimensions ; i++)
+		{
+			System.out.print(" "+this.coordinates[i]);
+		}*/
+		
+		double distance = 0.0;
+		
+		for (int i = 0 ; i < this.dimensions ; i++)
+		{
+			distance += Math.pow(instance.value(i)-(this.coordinates[i]*this.gridWidth), 2.0);
+			//if (((int) (instance.value(i)/this.gridWidth)) != this.coordinates[i])
+			//{
+				//System.out.println(" // InclusionProbability is 0.");
+				//return 0.0;
+			//}
 		}
 		
-		return 1.0;
+		distance = Math.sqrt(distance);
+		//System.out.println(" // InclusionProbability is 1!");
+		if(distance < this.gridWidth)
+			return 1.0;
+		else
+			return Math.pow(2.0, (this.gridWidth - distance)/this.gridWidth);
 	}
 
 	/**
@@ -254,14 +289,14 @@ public class DensityGrid extends CFCluster
 	 */
 	@Override
 	public double getRadius() {
-		return 1.0;
+		return this.gridWidth/2.0;
 	}
 
 	/**
 	 * @return the isVisited
 	 */
 	public boolean isVisited() {
-		return isVisited;
+		return this.isVisited;
 	}
 
 	/**
@@ -269,5 +304,12 @@ public class DensityGrid extends CFCluster
 	 */
 	public void setVisited(boolean isVisited) {
 		this.isVisited = isVisited;
+	}
+
+	/**
+	 * @return the gridWidth
+	 */
+	public double getGridWidth() {
+		return this.gridWidth;
 	}
 }

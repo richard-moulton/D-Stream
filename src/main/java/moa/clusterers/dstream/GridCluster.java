@@ -287,18 +287,20 @@ public class GridCluster extends NonConvexCluster
 	 * @return 1.0 if instance matches any of the density grids; 0.0 otherwise.
 	 */
 	@Override
-	public double getInclusionProbability(Instance instance) {
+	public double getInclusionProbability(Instance instance)
+	{
 		Iterator<Map.Entry<DensityGrid, Boolean>> gridIter = grids.entrySet().iterator();
+		double max = 0.0;
 		
 		while(gridIter.hasNext())
 		{
 			Map.Entry<DensityGrid, Boolean> grid = gridIter.next();
 			DensityGrid dg = grid.getKey();
-			if(dg.getInclusionProbability(instance) == 1.0)
-				return 1.0;
+			if(dg.getInclusionProbability(instance) > max)
+				max = dg.getInclusionProbability(instance);
 		}
 		
-		return 0.0;
+		return max;
 	}
 	
 	/**

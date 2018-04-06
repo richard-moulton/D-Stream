@@ -23,13 +23,16 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import com.github.javacliparser.FloatOption;
 import com.yahoo.labs.samoa.instances.Instance;
 
 import moa.cluster.CFCluster;
+import moa.cluster.Cluster;
 import moa.cluster.Clustering;
 import moa.clusterers.AbstractClusterer;
+import moa.clusterers.clustream.ClustreamKernel;
 import moa.core.Measurement;
 
 /** Citation: Y. Chen and L. Tu, “Density-Based Clustering for Real-Time Stream Data,” in
@@ -57,6 +60,9 @@ public class Dstream extends AbstractClusterer {
 			+ "window of protection for renaming previously deleted grids as "
 			+ "sporadic, > 0", 0.3, 0.001, Double.MAX_VALUE);
 
+	public FloatOption gridWidthOption = new FloatOption("gridScale", 'g',
+			"The width of a grid in every numerical dimension.", .01, 0.001, Double.MAX_VALUE);
+	
 	/**
 	 * The data stream's current internal time. Starts at 0.
 	 */
@@ -157,6 +163,11 @@ public class Dstream extends AbstractClusterer {
 	private int[]maxVals;
 
 	/**
+	 * Variable to control the scale of the grid for numerical attributes.
+	 */
+	private double gridWidth;
+	
+	/**
 	 *  @see moa.clusterers.Clusterer#isRandomizable()
 	 * D-Stream is not randomizable.
 	 */
@@ -188,6 +199,31 @@ public class Dstream extends AbstractClusterer {
 	}
 
 	/**
+	 * @see moa.clusterers.Clusterer#getMicroClusteringResult()
+	 */
+	@Override
+	public Clustering getMicroClusteringResult()
+	{
+		if (!this.initialized)
+		{
+			return new Clustering(new Cluster[0]);
+		}
+
+		DensityGrid[] result = new DensityGrid[this.grid_list.size()];
+		Iterator<Map.Entry<DensityGrid, CharacteristicVector>> glIter = this.grid_list.entrySet().iterator();
+		int i = 0;
+		
+		while(glIter.hasNext())
+		{
+			Entry<DensityGrid, CharacteristicVector> dg = glIter.next();
+			
+			result[i] = new DensityGrid(dg.getKey());
+		}
+
+		return new Clustering(result);
+	}
+	
+	/**
 	 * @see moa.clusterers.AbstractClusterer#resetLearningImpl()
 	 */
 	@Override
@@ -196,10 +232,11 @@ public class Dstream extends AbstractClusterer {
 		this.setCurrTime(0);
 		//System.out.println("Current time set...");
 		
-		this.decayFactor = decayFactorOption.getValue();
-		this.cm = cmOption.getValue();
-		this.cl = clOption.getValue();
-		this.beta = betaOption.getValue();
+		this.decayFactor = this.decayFactorOption.getValue();
+		this.cm = this.cmOption.getValue();
+		this.cl = this.clOption.getValue();
+		this.beta = this.betaOption.getValue();
+		this.gridWidth = this.gridWidthOption.getValue();
 		//System.out.println("Option values set...");
 
 		this.initialized = false;
@@ -271,7 +308,7 @@ public class Dstream extends AbstractClusterer {
 		{
 			if (inst.attribute(i).isNumeric())
 			{
-				g[i] = (int) inst.value(i);
+				g[i] = (int) (inst.value(i)/this.gridWidth);
 				if (g[i] > maxVals[i])
 				{
 					maxVals[i] = g[i];
@@ -319,7 +356,7 @@ public class Dstream extends AbstractClusterer {
 			//System.out.println(" A is "+optionA+", B is "+optionB+" and gap = "+gap);
 		}
 
-		dg = new DensityGrid(g);
+		dg = new DensityGrid(g, this.gridWidth);
 		//System.out.println(dg.toString());
 		
 		// 3. If (g not in grid_list) insert dg to grid_list
@@ -375,6 +412,10 @@ public class Dstream extends AbstractClusterer {
 				this.removeSporadic();
 				this.adjustClustering();
 			}
+			
+		//printGridList();
+		//printGridClusters();
+		
 		}
 
 		// 7. Increment tc
