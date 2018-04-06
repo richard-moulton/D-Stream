@@ -1,5 +1,5 @@
 # D-Stream
-Implementation of the D-Stream clustering algorithm for use in MOA. Now included as part of the MOA 17.06 release.
+Implementation of the D-Stream clustering algorithm for use in MOA. An earlier version is included as part of the MOA 17.06 release.
 
 The D-Stream algorithm is described by Yixin Chen and Li Tu in their paper "Density-Based Clustering for Real-Time Stream Data" [2]. Please cite that paper if you use this code.
 
