@@ -1,7 +1,7 @@
 /**
  *    DensityGrid.java
  *    
- *    @author Richard Hugh Moulton  (rmoul026 -[at]- uottawa dot ca)
+ *    @author Richard Hugh Moulton
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -24,13 +24,13 @@ import moa.cluster.CFCluster;
 
 /**
  * Density Grids are defined in equation 3 (section 3.1) of Chen and Tu 2007 as:
- * In D-Stream, we partition the d−dimensional space S into density grids. Suppose 
+ * "In D-Stream, we partition the d−dimensional space S into density grids. Suppose 
  * for each dimension, its space Si, i =1, ··· ,d is divided into pi partitions as
  * Si = Si,1 U Si,2 U ··· U Si,pi (2)
  * then the data space S is partitioned into N = PRODUCT (i=1..d) pi density grids. 
  * For a density grid g that is composed of S1,j1 ×S2,j2 ···×Sd,jd , ji =1, ...,pi,
  * we denote it as 
- * g =(j1,j2, ··· ,jd). (3)
+ * g =(j1,j2, ··· ,jd). (3)"
  * 
  * Citation: Y. Chen and L. Tu, “Density-Based Clustering for Real-Time Stream Data,” in
  * Proceedings of the 13th ACM SIGKDD international conference on Knowledge discovery and
@@ -156,7 +156,6 @@ public class DensityGrid extends CFCluster
 	@Override
 	public int hashCode()
 	{
-		//int[] primes = {31, 37, 41, 43, 47, 53, 59};
 		int hc = 1;
 		
 		for (int i = 0 ; i < this.dimensions ; i++)
@@ -245,37 +244,16 @@ public class DensityGrid extends CFCluster
 	 */
 	@Override
 	public double getInclusionProbability(Instance instance)
-	{	
-		/*System.out.print("Instance:");
-		for (int i = 0 ; i < this.dimensions ; i++)
-		{
-			System.out.print(" "+instance.value(i));
-		}
-		System.out.print(" (");
-		for (int i = 0 ; i < this.dimensions ; i++)
-		{
-			System.out.print(" "+((int) (instance.value(i)/this.gridWidth)));
-		}
-		System.out.print(") // Coordinates:");
-		for (int i = 0 ; i < this.dimensions ; i++)
-		{
-			System.out.print(" "+this.coordinates[i]);
-		}*/
-		
+	{			
 		double distance = 0.0;
 		
 		for (int i = 0 ; i < this.dimensions ; i++)
 		{
 			distance += Math.pow(instance.value(i)-(this.coordinates[i]*this.gridWidth), 2.0);
-			//if (((int) (instance.value(i)/this.gridWidth)) != this.coordinates[i])
-			//{
-				//System.out.println(" // InclusionProbability is 0.");
-				//return 0.0;
-			//}
 		}
 		
 		distance = Math.sqrt(distance);
-		//System.out.println(" // InclusionProbability is 1!");
+
 		if(distance < this.gridWidth)
 			return 1.0;
 		else

@@ -1,7 +1,7 @@
 /**
  *    GridCluster.java
  *    
- *    @author Richard Hugh Moulton  (rmoul026 -[at]- uottawa dot ca)
+ *    @author Richard Hugh Moulton
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -30,9 +30,9 @@ import moa.clusterers.macro.NonConvexCluster;
 
 /**
  * Grid Clusters are defined in Definition 3.6 of Chen and Tu 2007 as:
- * Let G =(g1, ·· · ,gm) be a grid group, if every inside grid of G is 
+ * "Let G =(g1, ·· · ,gm) be a grid group, if every inside grid of G is 
  * a dense grid and every outside grid is either a dense grid or a 
- * transitional grid, then G is a grid cluster.
+ * transitional grid, then G is a grid cluster."
  * 
  * Citation: Y. Chen and L. Tu, “Density-Based Clustering for Real-Time Stream Data,” in
  * Proceedings of the 13th ACM SIGKDD international conference on Knowledge discovery and
@@ -70,6 +70,8 @@ public class GridCluster extends NonConvexCluster
 	}
 	
 	/**
+	 * Adds the argument density grid to the cluster of grids.
+	 * 
 	 * @param dg the density grid to add to the cluster
 	 */
 	public void addGrid(DensityGrid dg)
@@ -90,6 +92,8 @@ public class GridCluster extends NonConvexCluster
 	}
 	
 	/**
+	 * Removes the argument density grid from the cluster of grids.
+	 * 
 	 * @param dg the density grid to remove from the cluster
 	 */
 	public void removeGrid(DensityGrid dg)
@@ -98,6 +102,9 @@ public class GridCluster extends NonConvexCluster
 	}
 	
 	/**
+	 * Absorbs the argument cluster of grids into this cluster by iterating through the grids
+	 * in the argument cluster and adding them to this cluster.
+	 * 
 	 * @param gridClus the GridCluster to be absorbed into this cluster
 	 */
 	public void absorbCluster(GridCluster gridClus)
@@ -106,9 +113,7 @@ public class GridCluster extends NonConvexCluster
 		Boolean inside;
 		Iterator<Map.Entry<DensityGrid, Boolean>> grid;
 		HashMap<DensityGrid, Boolean> newCluster = new HashMap<DensityGrid, Boolean>();
-		
-		//System.out.println("Absorb cluster "+gridClus.getClusterLabel()+" into cluster "+this.getClusterLabel()+".");
-		
+				
 		// Add each density grid from gridClus into this.grids
 		grid = gridClus.getGrids().entrySet().iterator();
 		while (grid.hasNext())
@@ -117,7 +122,6 @@ public class GridCluster extends NonConvexCluster
 			dg = entry.getKey();
 			this.grids.put(dg, false);
 		}
-		//System.out.println("...density grids added");
 		
 		// Determine which density grids in this.grids are 'inside' and which are 'outside'
 		grid = this.getGrids().entrySet().iterator();
@@ -129,15 +133,13 @@ public class GridCluster extends NonConvexCluster
 			newCluster.put(dg, inside);
 		}
 		this.grids = newCluster;
-		//System.out.println("...inside/outside determined");
-
 	}
 	
 	/**
 	 * Inside Grids are defined in Definition 3.5 of Chen and Tu 2007 as:
-	 * Consider a grid group G and a grid g ∈ G, suppose g =(j1, ··· ,jd), if g has 
+	 * "Consider a grid group G and a grid g ∈ G, suppose g =(j1, ··· ,jd), if g has 
 	 * neighboring grids in every dimension i =1, ·· · ,d, then g is an inside grid 
-	 * in G.Otherwise g is an outside grid in G.
+	 * in G.Otherwise g is an outside grid in G."
 	 * 
 	 * @param dg the density grid to label as being inside or out
 	 * @return TRUE if g is an inside grid, FALSE otherwise
@@ -160,9 +162,9 @@ public class GridCluster extends NonConvexCluster
 	
 	/**
 	 * Inside Grids are defined in Definition 3.5 of Chen and Tu 2007 as:
-	 * Consider a grid group G and a grid g ∈ G, suppose g =(j1, ··· ,jd), if g has 
+	 * "Consider a grid group G and a grid g ∈ G, suppose g =(j1, ··· ,jd), if g has 
 	 * neighboring grids in every dimension i =1, ·· · ,d, then g is an inside grid 
-	 * in G. Otherwise g is an outside grid in G.
+	 * in G. Otherwise g is an outside grid in G."
 	 * 
 	 * @param dg the density grid being labelled as inside or outside
 	 * @param dgH the density grid being proposed for addition
@@ -271,12 +273,10 @@ public class GridCluster extends NonConvexCluster
 		
 		if (this.visited.size() == this.grids.size())
 		{
-			//System.out.println("The cluster is still connected. "+this.visited.size()+" of "+this.grids.size()+" reached.");
 			return true;
 		}
 		else
 		{
-			//System.out.println("The cluster is no longer connected. "+this.visited.size()+" of "+this.grids.size()+" reached.");
 			return false;
 		}
 	}

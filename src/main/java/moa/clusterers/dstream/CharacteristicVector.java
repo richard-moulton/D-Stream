@@ -1,7 +1,7 @@
 /**
  *    CharacteristicVector.java
  *    
- *    @author Richard Hugh Moulton  (rmoul026 -[at]- uottawa dot ca)
+ *    @author Richard Hugh Moulton
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -212,13 +212,8 @@ public class CharacteristicVector {
 	 */
 	public void densityWithNew(int currTime, double decayFactor)
 	{
-		// Update the density grid's density
 		double densityOfG = this.getGridDensity();
-		
-		//System.out.print("["+decayFactor+"^("+currTime+" - "+this.getDensityTimeStamp()+") * "+densityOfG+"] + 1.0 = ");
 		densityOfG = (Math.pow(decayFactor, (currTime-this.getUpdateTime())) * densityOfG)+1.0;
-		//System.out.println(densityOfG);
-		
 		this.setGridDensity(densityOfG, currTime);
 	}
 	
@@ -234,7 +229,7 @@ public class CharacteristicVector {
 	 */
 	public void updateGridDensity(int currTime, double decayFactor, double dl, double dm)
 	{
-		// record the last attribute
+		// Record the last attribute
 		int lastAtt = this.getAttribute();
 
 		// Update the density grid's density
